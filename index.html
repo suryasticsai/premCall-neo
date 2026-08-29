@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>PremCall — Messenger</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/suryasticsai/premCall/main/premCall-logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <style>
+        :root {
+            --void: #030407; --void-2: #080b14; --surface: #0f111a; --surface-2: #161926;
+            --surface-3: #1e2233; --glass: rgba(15,17,26,0.72); --line: rgba(255,255,255,0.06);
+            --line-2: rgba(255,255,255,0.10); --text: #f0f2f7; --text-dim: #8b92a8; --text-faint: #4a5068;
+            --primary: #8b5cf6; --primary-glow: rgba(139,92,246,0.35); --accent: #06b6d4; --accent-glow: rgba(6,182,212,0.30);
+            --go: #10b981; --go-glow: rgba(16,185,129,0.30); --stop: #f43f5e; --stop-glow: rgba(244,63,94,0.30);
+            --warn: #f59e0b; --radius-xl: 24px; --radius-lg: 18px; --radius-md: 14px; --radius-sm: 10px;
+            --font-display: 'Space Grotesk',sans-serif; --font-body: 'Inter',sans-serif;
+            --safe-t: env(safe-area-inset-top,0px); --safe-b: env(safe-area-inset-bottom,0px);
+        }
+        body.light-mode {
+            --void: #f5f7fa; --void-2: #ffffff; --surface: #ffffff; --surface-2: #f1f5f9; --surface-3: #e2e8f0;
+            --glass: rgba(255,255,255,0.82); --line: rgba(0,0,0,0.06); --line-2: rgba(0,0,0,0.10);
+            --text: #0f172a; --text-dim: #475569; --text-faint: #94a3b8;
+            --primary: #7c3aed; --primary-glow: rgba(124,58,237,0.20); --accent: #0891b2; --accent-glow: rgba(8,145,178,0.20);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html,body { height: 100%; overflow: hidden; font-family: var(--font-body); color: var(--text); background: var(--void); }
+        .mesh-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: radial-gradient(ellipse 80% 50% at 20% 40%, rgba(139,92,246,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 40% at 80% 60%, rgba(6,182,212,0.06) 0%, transparent 50%), var(--void); }
+        body.light-mode .mesh-bg { background: radial-gradient(ellipse 80% 50% at 20% 40%, rgba(124,58,237,0.05) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 80% 60%, rgba(8,145,178,0.04) 0%, transparent 50%), var(--void); }
+        .app-shell { position: relative; z-index: 1; height: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; background: linear-gradient(180deg, var(--void-2), var(--void)); }
+        @media (min-width: 640px) { .app-shell { height: min(900px,96vh); border-radius: 32px; margin-top: 2vh; box-shadow: 0 0 0 8px #0a0c14, 0 0 0 9px var(--line-2), 0 50px 120px -30px rgba(0,0,0,0.8); } body.light-mode .app-shell { box-shadow: 0 0 0 8px #e2e8f0, 0 0 0 9px #cbd5e1, 0 50px 120px -30px rgba(0,0,0,0.2); } }
+        .app-header { flex: 0 0 auto; padding: calc(0.8rem + var(--safe-t)) 1.2rem 0.6rem; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, var(--void-2), transparent); }
+        .app-header .brand { display: flex; align-items: center; gap: 0.6rem; }
+        .app-header .brand img { width: 32px; height: 32px; border-radius: 10px; object-fit: cover; }
+        .app-header .brand span { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
+        .app-header .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .icon-btn-ghost { width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--surface-2); color: var(--text-dim); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+        .icon-btn-ghost:hover { background: var(--surface-3); color: var(--text); transform: scale(1.08); }
+        .icon-btn-ghost.active { background: var(--primary); color: #fff; box-shadow: 0 0 20px var(--primary-glow); }
+        .search-bar { margin: 0 1.2rem 0.6rem; position: relative; }
+        .search-bar input { width: 100%; padding: 0.65rem 1rem 0.65rem 2.4rem; border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 0.9rem; font-family: var(--font-body); outline: none; transition: all 0.2s; }
+        .search-bar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .search-bar input::placeholder { color: var(--text-faint); }
+        .search-bar i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 0.85rem; }
+        .stories-row { display: flex; gap: 0.7rem; padding: 0.4rem 1.2rem 0.8rem; overflow-x: auto; scrollbar-width: none; }
+        .stories-row::-webkit-scrollbar { display: none; }
+        .story-item { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; }
+        .story-item:hover { transform: translateY(-2px); }
+        .story-ring { width: 64px; height: 64px; border-radius: 50%; padding: 3px; background: linear-gradient(135deg, var(--primary), var(--accent), var(--go)); position: relative; }
+        .story-ring.seen { background: var(--surface-3); }
+        .story-ring .story-avatar { width: 100%; height: 100%; border-radius: 50%; background: var(--surface-2); border: 2px solid var(--void); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; color: var(--text-dim); overflow: hidden; }
+        .story-ring .story-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .story-add { position: absolute; bottom: -2px; right: -2px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 0.65rem; display: flex; align-items: center; justify-content: center; border: 2px solid var(--void); }
+        .story-name { font-size: 0.68rem; color: var(--text-dim); max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .content-area { flex: 1; min-height: 0; overflow-y: auto; padding: 0 1.2rem; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+        .content-area::-webkit-scrollbar { width: 3px; }
+        .content-area::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 10px; }
+        .section-title { font-family: var(--font-display); font-size: 0.75rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: 0.6rem 0 0.4rem; display: flex; align-items: center; gap: 0.4rem; }
+        .chat-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.7rem 0.6rem; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; position: relative; margin-bottom: 2px; }
+        .chat-item:hover { background: var(--surface-2); }
+        .chat-item:active { transform: scale(0.99); }
+        .chat-item .chat-avatar { width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--surface-3), var(--surface-2)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; color: var(--text-dim); position: relative; overflow: hidden; }
+        .chat-item .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .chat-item .online-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--go); border: 2px solid var(--void); box-shadow: 0 0 6px var(--go-glow); }
+        .chat-item .chat-body { flex: 1; min-width: 0; }
+        .chat-item .chat-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.15rem; }
+        .chat-item .chat-name { font-weight: 600; font-size: 0.92rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item .chat-time { font-size: 0.68rem; color: var(--text-faint); flex-shrink: 0; }
+        .chat-item .chat-preview { font-size: 0.78rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.3rem; }
+        .chat-item .chat-preview i { font-size: 0.65rem; }
+        .chat-item .chat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+        .chat-item .unread-badge { min-width: 20px; height: 20px; border-radius: 10px; background: var(--primary); color: #fff; font-size: 0.65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; box-shadow: 0 2px 8px var(--primary-glow); }
+        .chat-item .chat-actions { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; gap: 0; opacity: 0; pointer-events: none; transition: opacity 0.2s; padding-right: 0.5rem; }
+        .chat-item:hover .chat-actions { opacity: 1; pointer-events: auto; }
+        .chat-item .chat-actions button { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--surface-3); color: var(--text-dim); font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-left: 0.3rem; transition: all 0.15s; }
+        .chat-item .chat-actions button:hover { background: var(--primary); color: #fff; transform: scale(1.1); }
+        .chat-item .chat-actions button.danger:hover { background: var(--stop); }
+        .call-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 0.6rem; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; margin-bottom: 2px; }
+        .call-item:hover { background: var(--surface-2); }
+        .call-item .call-icon { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+        .call-item .call-icon.incoming { background: rgba(16,185,129,0.12); color: var(--go); }
+        .call-item .call-icon.outgoing { background: rgba(139,92,246,0.12); color: var(--primary); }
+        .call-item .call-icon.missed { background: rgba(244,63,94,0.12); color: var(--stop); }
+        .call-item .call-body { flex: 1; min-width: 0; }
+        .call-item .call-name { font-weight: 600; font-size: 0.9rem; }
+        .call-item .call-info { font-size: 0.72rem; color: var(--text-faint); display: flex; align-items: center; gap: 0.3rem; }
+        .call-item .call-actions { display: flex; gap: 0.3rem; }
+        .call-item .call-actions button { width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: all 0.15s; }
+        .call-item .call-actions .call-back { background: var(--go); color: #fff; }
+        .call-item .call-actions .call-back:hover { box-shadow: 0 0 12px var(--go-glow); transform: scale(1.08); }
+        .call-item .call-actions .video-back { background: var(--primary); color: #fff; }
+        .call-item .call-actions .video-back:hover { box-shadow: 0 0 12px var(--primary-glow); transform: scale(1.08); }
+        .contact-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.6rem; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; margin-bottom: 2px; }
+        .contact-item:hover { background: var(--surface-2); }
+        .contact-item .contact-avatar { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--surface-3), var(--surface-2)); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 700; color: var(--text-dim); }
+        .contact-item .contact-body { flex: 1; }
+        .contact-item .contact-name { font-weight: 600; font-size: 0.88rem; }
+        .contact-item .contact-number { font-size: 0.72rem; color: var(--text-faint); }
+        .contact-item .contact-actions { display: flex; gap: 0.3rem; opacity: 0; transition: opacity 0.2s; }
+        .contact-item:hover .contact-actions { opacity: 1; }
+        .contact-item .contact-actions button { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--surface-3); color: var(--text-dim); font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .contact-item .contact-actions button:hover { background: var(--primary); color: #fff; }
+        .contact-item .contact-actions button.danger:hover { background: var(--stop); }
+        .fab { position: fixed; bottom: calc(5.5rem + var(--safe-b)); right: 1.5rem; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; border: none; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px var(--primary-glow); transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 100; }
+        .fab:hover { transform: scale(1.1) rotate(90deg); }
+        .fab:active { transform: scale(0.95); }
+        @media (min-width: 640px) { .fab { right: calc(50% - 200px + 1.5rem); } }
+        .bottom-nav { flex: 0 0 auto; display: flex; justify-content: space-around; align-items: center; padding: 0.5rem 0 calc(0.6rem + var(--safe-b)); background: linear-gradient(0deg, var(--void-2), transparent); border-top: 1px solid var(--line); backdrop-filter: blur(20px); position: relative; z-index: 50; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.3rem 0.8rem; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; position: relative; color: var(--text-faint); background: none; border: none; font-family: var(--font-body); }
+        .nav-item:hover { color: var(--text-dim); }
+        .nav-item.active { color: var(--primary); }
+        .nav-item i { font-size: 1.1rem; transition: transform 0.2s; }
+        .nav-item.active i { transform: translateY(-2px); }
+        .nav-item span { font-size: 0.6rem; font-weight: 600; }
+        .nav-item .nav-badge { position: absolute; top: 2px; right: 8px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--stop); color: #fff; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+        .tab-view { display: none; animation: fadeIn 0.25s ease; }
+        .tab-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-faint); }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 0.8rem; display: block; opacity: 0.5; }
+        .empty-state p { font-size: 0.85rem; }
+        .modal-overlay { display: none; position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); align-items: flex-end; justify-content: center; animation: fadeIn 0.2s; }
+        .modal-overlay.active { display: flex; }
+        .modal-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-xl) var(--radius-xl) 0 0; width: 100%; max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.2rem 0.6rem; }
+        .modal-header span { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+        .modal-close { background: none; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .modal-close:hover { background: var(--surface-2); color: var(--stop); }
+        .modal-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 1.2rem 1rem; }
+        .form-row { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
+        .form-row input { flex: 1; padding: 0.6rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font-size: 0.85rem; outline: none; font-family: var(--font-body); }
+        .form-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .form-row input::placeholder { color: var(--text-faint); }
+        .btn-primary { padding: 0.6rem 1.4rem; border-radius: var(--radius-lg); border: none; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s; white-space: nowrap; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--primary-glow); }
+        #toast { position: fixed; bottom: calc(5rem + var(--safe-b)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface-3); border: 1px solid var(--line-2); color: var(--text); padding: 0.7rem 1.4rem; border-radius: 40px; font-size: 0.85rem; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 6000; max-width: 88%; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #callScreen { display: none; position: fixed; inset: 0; z-index: 3000; flex-direction: column; background: #000; color: #fff; }
+        #callScreen.active { display: flex; }
+        #callScreen .video-bg { position: absolute; inset: 0; z-index: 1; }
+        #callScreen .video-bg video { width: 100%; height: 100%; object-fit: cover; }
+        #callScreen .local-pip { position: absolute; bottom: 100px; right: 12px; width: 100px; height: 130px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.15); background: #000; z-index: 10; overflow: hidden; transition: opacity 0.3s; }
+        #callScreen .local-pip video { width: 100%; height: 100%; object-fit: cover; }
+        #callScreen .local-pip.hidden { opacity: 0; pointer-events: none; }
+        #callScreen .voice-ui { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 1.5rem; }
+        #callScreen .voice-ui.hidden { display: none; }
+        #callScreen .avatar-wrap { position: relative; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+        #callScreen .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--primary); opacity: 0; }
+        #callScreen .avatar-wrap.ring-anim .ring { animation: pulse 2.4s ease-out infinite; }
+        #callScreen .avatar-wrap.ring-anim .ring:nth-child(2) { animation-delay: 0.8s; }
+        #callScreen .avatar-wrap.ring-anim .ring:nth-child(3) { animation-delay: 1.6s; }
+        @keyframes pulse { 0% { transform: scale(0.72); opacity: 0.55; } 100% { transform: scale(1.65); opacity: 0; } }
+        #callScreen .avatar { width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, var(--surface-3), var(--surface)); border: 2px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; z-index: 1; }
+        #callScreen .peer-name { font-size: 1.5rem; font-weight: 700; font-family: var(--font-display); }
+        #callScreen .peer-number { color: rgba(255,255,255,0.5); font-size: 0.9rem; }
+        #callScreen .call-timer { font-size: 1.8rem; color: var(--go); margin: 0.8rem 0; font-family: var(--font-display); font-weight: 600; }
+        #callScreen .controls-overlay { position: absolute; bottom: 0; left: 0; right: 0; z-index: 20; padding: 1rem 1.5rem calc(1.2rem + var(--safe-b)); background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%); display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+        #callScreen .call-actions { display: flex; gap: 1rem; justify-content: center; }
+        #callScreen .action-item { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+        #callScreen .action-item .label { font-size: 0.55rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.04em; }
+        #callScreen .call-actions button { width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer; font-size: 1rem; background: rgba(255,255,255,0.10); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.2s; backdrop-filter: blur(8px); }
+        #callScreen .call-actions button:active { transform: scale(0.90); }
+        #callScreen .call-actions .mute.active { background: rgba(245,158,11,0.25); color: var(--warn); }
+        #callScreen .call-actions .speaker.active { background: rgba(139,92,246,0.25); color: var(--primary); }
+        #callScreen .call-actions .video-btn.active { background: rgba(16,185,129,0.25); color: var(--go); }
+        #callScreen .hangup { width: 64px !important; height: 64px !important; font-size: 1.3rem !important; background: linear-gradient(135deg, var(--stop), #be123c) !important; box-shadow: 0 8px 30px var(--stop-glow); }
+        #callScreen .net-badge { position: absolute; top: 12px; left: 12px; z-index: 15; display: flex; align-items: center; gap: 0.3rem; font-size: 0.65rem; padding: 0.3rem 0.7rem; border-radius: 20px; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); }
+        #callScreen .net-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+        #callScreen .net-badge.good { color: var(--go); } #callScreen .net-badge.good .dot { background: var(--go); box-shadow: 0 0 6px var(--go-glow); }
+        #callScreen .net-badge.ok { color: var(--warn); } #callScreen .net-badge.ok .dot { background: var(--warn); }
+        #callScreen .net-badge.bad { color: var(--stop); } #callScreen .net-badge.bad .dot { background: var(--stop); box-shadow: 0 0 6px var(--stop-glow); }
+        #callScreen .top-right-controls { position: absolute; top: 12px; right: 12px; z-index: 15; display: flex; gap: 8px; }
+        #callScreen .top-right-controls button { width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer; font-size: 0.85rem; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        #callScreen .top-right-controls button:active { transform: scale(0.88); }
+        #callScreen .top-right-controls button.active { background: rgba(139,92,246,0.3); color: var(--primary); }
+        #incomingOverlay { display: none; position: absolute; inset: 0; z-index: 900; flex-direction: column; justify-content: center; align-items: center; background: var(--void); border-radius: inherit; }
+        #incomingOverlay.active { display: flex; }
+        #incomingOverlay .avatar { width: 110px; height: 110px; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin-bottom: 1.2rem; border: 2px solid var(--line-2); }
+        #incomingOverlay .peer-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; }
+        #incomingOverlay .peer-number { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.2rem; }
+        #incomingOverlay .hint { color: var(--text-faint); font-size: 0.75rem; margin-top: 0.5rem; }
+        #incomingOverlay .actions { display: flex; gap: 2.5rem; margin-top: 2.5rem; }
+        #incomingOverlay .actions button { width: 68px; height: 68px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.5rem; color: #fff; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        #incomingOverlay .answer { background: linear-gradient(135deg, var(--go), #059669); box-shadow: 0 8px 24px var(--go-glow); animation: nudge 1.8s infinite; }
+        #incomingOverlay .reject { background: linear-gradient(135deg, var(--stop), #be123c); box-shadow: 0 8px 24px var(--stop-glow); }
+        @keyframes nudge { 50% { transform: translateY(-4px); } }
+        .ragina-card { background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(6,182,212,0.06)); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 0.8rem 1rem; margin-bottom: 0.6rem; cursor: pointer; display: flex; align-items: center; gap: 0.8rem; transition: all 0.2s; }
+        .ragina-card:hover { border-color: var(--primary); transform: translateX(4px); }
+        .ragina-card .ragina-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+        .ragina-card .ragina-body { flex: 1; }
+        .ragina-card .ragina-name { font-weight: 700; font-size: 0.95rem; }
+        .ragina-card .ragina-desc { font-size: 0.75rem; color: var(--text-dim); }
+        .ragina-card .ragina-badge { padding: 0.25rem 0.6rem; border-radius: 20px; background: var(--primary); color: #fff; font-size: 0.65rem; font-weight: 600; }
+        .typing-dots { display: flex; gap: 3px; align-items: center; }
+        .typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); animation: typingBounce 1.4s infinite ease-in-out both; }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typingBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+        .header-status { display: flex; align-items: center; gap: 0.4rem; font-size: 0.7rem; color: var(--text-faint); }
+        .header-status .dot { width: 7px; height: 7px; border-radius: 50%; }
+        .header-status .dot.online { background: var(--go); box-shadow: 0 0 6px var(--go-glow); }
+        .header-status .dot.offline { background: var(--stop); }
+        .header-status .dot.connecting { background: var(--warn); animation: blink 1.2s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+        .divider { height: 1px; background: var(--line); margin: 0.4rem 0; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.6rem; border-bottom: 1px solid var(--line); }
+        .setting-row:last-child { border-bottom: none; }
+        .toggle { width: 48px; height: 26px; border-radius: 13px; background: var(--surface-3); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+        .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--text); top: 2px; left: 2px; transition: transform 0.2s; }
+        .toggle.on { background: var(--primary); }
+        .toggle.on::after { transform: translateX(22px); background: #fff; }
+        .action-btn { width: 100%; padding: 0.7rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font-size: 0.85rem; font-family: var(--font-body); cursor: pointer; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; transition: all 0.15s; }
+        .action-btn:hover { background: var(--surface-3); transform: translateX(2px); }
+        @media (max-height: 700px) { .story-ring { width: 54px; height: 54px; } .story-name { max-width: 54px; } .chat-item .chat-avatar { width: 46px; height: 46px; } }
+    </style>
+</head>
+<body>
+    <div class="mesh-bg"></div>
+    <div class="app-shell" id="appShell">
+        <div class="app-header">
+            <div class="brand">
+                <img src="https://raw.githubusercontent.com/suryasticsai/premCall/main/premCall-logo.png" alt="PremCall">
+                <span>PremCall</span>
+            </div>
+            <div class="header-actions">
+                <div class="header-status">
+                    <span class="dot offline" id="headerStatusDot"></span>
+                    <span id="myNumberDisplay" style="cursor:pointer; font-size:0.75rem; color:var(--text-dim);">—</span>
+                </div>
+                <button class="icon-btn-ghost" id="themeToggle" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+                <button class="icon-btn-ghost" id="headerSearchBtn" title="Search"><i class="fas fa-magnifying-glass"></i></button>
+            </div>
+        </div>
+        <div class="search-bar" id="searchBar" style="display:none;">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" id="globalSearch" placeholder="Search chats, contacts, messages..." autocomplete="off">
+        </div>
+        <div class="content-area" id="contentArea">
+            <div class="tab-view active" id="tabChats">
+                <div class="stories-row" id="storiesRow">
+                    <div class="story-item" id="myStoryBtn">
+                        <div class="story-ring">
+                            <div class="story-avatar" style="font-size:1.4rem;">+</div>
+                            <div class="story-add"><i class="fas fa-plus" style="font-size:0.5rem;"></i></div>
+                        </div>
+                        <span class="story-name">My Story</span>
+                    </div>
+                </div>
+                <div class="ragina-card" id="raginaCard">
+                    <div class="ragina-avatar">🤖</div>
+                    <div class="ragina-body">
+                        <div class="ragina-name">RAGina AI</div>
+                        <div class="ragina-desc">Your cognitive assistant — ask anything</div>
+                    </div>
+                    <span class="ragina-badge">AI</span>
+                </div>
+                <div class="section-title"><i class="fas fa-thumbtack"></i> Pinned</div>
+                <div id="pinnedChats"></div>
+                <div class="divider"></div>
+                <div class="section-title"><i class="fas fa-comment"></i> All Messages</div>
+                <div id="chatList"></div>
+                <div class="empty-state" id="chatsEmpty" style="display:none;">
+                    <i class="fas fa-comments"></i>
+                    <p>No conversations yet.<br>Start chatting with your contacts!</p>
+                </div>
+            </div>
+            <div class="tab-view" id="tabCalls">
+                <div class="section-title"><i class="fas fa-phone"></i> Recent Calls</div>
+                <div id="callsList"></div>
+                <div class="empty-state" id="callsEmpty" style="display:none;">
+                    <i class="fas fa-phone-slash"></i>
+                    <p>No calls yet.</p>
+                </div>
+            </div>
+            <div class="tab-view" id="tabContacts">
+                <div class="search-bar" style="margin: 0 0 0.6rem;">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="contactsSearch" placeholder="Search contacts...">
+                </div>
+                <div class="form-row">
+                    <input type="text" id="contactNameInput" placeholder="Name">
+                    <input type="text" id="contactNumberInput" placeholder="10-digit number">
+                    <button class="btn-primary" id="saveContactBtn"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="section-title"><i class="fas fa-address-book"></i> Contacts</div>
+                <div id="contactsList"></div>
+                <div class="empty-state" id="contactsEmpty" style="display:none;">
+                    <i class="fas fa-user-group"></i>
+                    <p>No contacts yet.<br>Add your first contact above!</p>
+                </div>
+            </div>
+            <div class="tab-view" id="tabSettings">
+                <div style="text-align:center; padding: 1.5rem 0;">
+                    <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--accent)); margin:0 auto 0.8rem; display:flex; align-items:center; justify-content:center; font-size:2rem; box-shadow: 0 8px 32px var(--primary-glow);">
+                        <i class="fas fa-user" style="color:#fff;"></i>
+                    </div>
+                    <div style="font-weight:700; font-size:1.1rem;" id="settingsName">Guest User</div>
+                    <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.2rem;" id="settingsNumber">Not registered</div>
+                    <button class="btn-primary" style="margin-top:0.8rem; padding:0.5rem 1.2rem; font-size:0.75rem;" id="registerBtn">
+                        <i class="fas fa-shield-halved"></i> Register Number
+                    </button>
+                </div>
+                <div class="divider"></div>
+                <div class="section-title">Preferences</div>
+                <div class="setting-row">
+                    <div><div style="font-weight:600; font-size:0.88rem;">Dark Mode</div><div style="font-size:0.72rem; color:var(--text-faint);">Toggle app appearance</div></div>
+                    <div class="toggle on" id="toggleTheme" data-key="theme"></div>
+                </div>
+                <div class="setting-row">
+                    <div><div style="font-weight:600; font-size:0.88rem;">Auto Transcript</div><div style="font-size:0.72rem; color:var(--text-faint);">Record speech during calls</div></div>
+                    <div class="toggle on" id="toggleTranscript" data-key="transcript"></div>
+                </div>
+                <div class="setting-row">
+                    <div><div style="font-weight:600; font-size:0.88rem;">AI Summary</div><div style="font-size:0.72rem; color:var(--text-faint);">Generate recap after calls</div></div>
+                    <div class="toggle on" id="toggleSummary" data-key="summary"></div>
+                </div>
+                <div class="setting-row">
+                    <div><div style="font-weight:600; font-size:0.88rem;">Video by Default</div><div style="font-size:0.72rem; color:var(--text-faint);">Start calls with camera on</div></div>
+                    <div class="toggle" id="toggleVideoDefault" data-key="videoDefault"></div>
+                </div>
+                <div class="divider"></div>
+                <div class="section-title">Actions</div>
+                <button class="action-btn" id="showQRBtn"><i class="fas fa-qrcode"></i> My QR Code</button>
+                <button class="action-btn" id="scanQRBtn"><i class="fas fa-camera"></i> Scan QR Code</button>
+                <button class="action-btn" id="clearDataBtn" style="color:var(--stop);"><i class="fas fa-trash"></i> Clear All Data</button>
+                <div style="text-align:center; padding: 1.5rem 0; color:var(--text-faint); font-size:0.7rem;">PremCall v2.0 — Cognitive Messenger</div>
+            </div>
+        </div>
+        <button class="fab" id="fabBtn"><i class="fas fa-pen"></i></button>
+        <div class="bottom-nav">
+            <button class="nav-item active" data-tab="chats">
+                <i class="fas fa-comment"></i><span>Chats</span>
+                <span class="nav-badge" id="chatBadge" style="display:none;">0</span>
+            </button>
+            <button class="nav-item" data-tab="calls">
+                <i class="fas fa-phone"></i><span>Calls</span>
+                <span class="nav-badge" id="callBadge" style="display:none;">0</span>
+            </button>
+            <button class="nav-item" data-tab="contacts">
+                <i class="fas fa-address-book"></i><span>People</span>
+            </button>
+            <button class="nav-item" data-tab="settings">
+                <i class="fas fa-gear"></i><span>Settings</span>
+            </button>
+        </div>
+        <div id="incomingOverlay">
+            <div class="avatar" id="incomingAvatar">👤</div>
+            <div class="peer-name" id="incomingName">Unknown</div>
+            <div class="peer-number" id="incomingNumber"></div>
+            <div class="hint"><i class="fas fa-arrow-up"></i> Incoming call</div>
+            <div class="actions">
+                <button class="reject" id="rejectBtn"><i class="fas fa-phone-slash"></i></button>
+                <button class="answer" id="answerBtn"><i class="fas fa-phone"></i></button>
+            </div>
+        </div>
+    </div>
+    <div id="callScreen">
+        <div class="video-bg"><video id="remoteVideo" autoplay playsinline></video></div>
+        <div class="local-pip hidden" id="localPip"><video id="localVideo" autoplay playsinline muted></video></div>
+        <div class="voice-ui" id="voiceUi">
+            <div class="avatar-wrap" id="callRingWrap">
+                <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+                <div class="avatar" id="callAvatar">🤖</div>
+            </div>
+            <div class="peer-name" id="callName">RAGina</div>
+            <div class="peer-number" id="callNumber">0000000000</div>
+            <div class="call-timer" id="callTimer">00:00</div>
+        </div>
+        <div class="net-badge good" id="netBadge"><div class="dot"></div><span id="netText">Excellent</span></div>
+        <div class="top-right-controls">
+            <button id="screenShareBtn" title="Screen share"><i class="fas fa-desktop"></i></button>
+            <button id="recordBtn" title="Record call"><i class="fas fa-circle"></i></button>
+        </div>
+        <div class="controls-overlay">
+            <div class="call-actions">
+                <div class="action-item"><button id="muteBtn"><i class="fas fa-microphone"></i></button><span class="label">Mute</span></div>
+                <div class="action-item"><button id="videoToggleBtn" class="video-btn"><i class="fas fa-video"></i></button><span class="label">Video</span></div>
+                <div class="action-item"><button class="hangup" id="hangupCallBtn"><i class="fas fa-phone-slash"></i></button><span class="label">End</span></div>
+                <div class="action-item"><button id="speakerBtn"><i class="fas fa-volume-high"></i></button><span class="label">Speaker</span></div>
+                <div class="action-item"><button id="chatToggleBtn"><i class="fas fa-comment"></i></button><span class="label">Chat</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="newChatModal">
+        <div class="modal-sheet">
+            <div class="modal-header"><span>New Conversation</span><button class="modal-close" id="newChatClose"><i class="fas fa-xmark"></i></button></div>
+            <div class="modal-body">
+                <div class="search-bar" style="margin: 0 0 0.8rem;">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" id="newChatSearch" placeholder="Search contacts or enter number...">
+                </div>
+                <div id="newChatList"></div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="qrModal">
+        <div class="modal-sheet" style="max-height:50vh; align-items:center; text-align:center;">
+            <div class="modal-header" style="width:100%;"><span>My QR Code</span><button class="modal-close" id="qrClose"><i class="fas fa-xmark"></i></button></div>
+            <div class="modal-body" style="display:flex; flex-direction:column; align-items:center;">
+                <div id="qrContainer" style="padding:1rem;"></div>
+                <p style="color:var(--text-dim); font-size:0.8rem; margin-top:0.5rem;">Scan to add my PremCall contact</p>
+            </div>
+        </div>
+    </div>
+    <div id="toast"></div>
+    <audio id="remoteAudio" autoplay playsinline style="display:none;"></audio>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+
+<script>
+(function(global) {
+    'use strict';
+    const RAGINA_NUMBER = '0000000000';
+    const API_URL = 'https://ragina-crawler-ragina.vercel.app/api/ask';
+    const ICE_CONFIG = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelay', credential: 'openrelay' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelay', credential: 'openrelay' }
+        ]
+    };
+
+    let peer = null, myId = null, localStream = null, activeCalls = [], inCall = false;
+    let muted = false, speakerOn = false, videoEnabled = false, incomingCall = null;
+    let currentTab = 'chats', timerInterval = null, timerSeconds = 0;
+    let transcriptEnabled = true, aiSummaryEnabled = true, videoDefault = false;
+    let ttsVoices = [], speechUnlocked = false, raginaCallActive = false;
+    let currentLog = null, lastLog = null, isLightMode = false;
+
+    const $ = id => document.getElementById(id);
+    const showToast = msg => {
+        const t = $('toast'); t.textContent = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    };
+    global.showToast = showToast;
+
+    function vibrate(p) { if (navigator.vibrate) try { navigator.vibrate(p); } catch(e){} }
+    function unlockSpeech() {
+        if (!window.speechSynthesis || speechUnlocked) return;
+        const u = new SpeechSynthesisUtterance(' '); u.volume = 0;
+        u.onend = () => speechUnlocked = true;
+        window.speechSynthesis.speak(u);
+        setTimeout(() => speechUnlocked = true, 400);
+    }
+
+    const getContacts = () => { try { return JSON.parse(localStorage.getItem('premCallContacts')) || []; } catch(e) { return []; } };
+    const saveContacts = c => localStorage.setItem('premCallContacts', JSON.stringify(c));
+    const getMessages = () => { try { return JSON.parse(localStorage.getItem('premCallMessages')) || {}; } catch(e) { return {}; } };
+    const saveMessages = m => localStorage.setItem('premCallMessages', JSON.stringify(m));
+    const getLogs = () => { try { return JSON.parse(localStorage.getItem('premCallLogs')) || []; } catch(e) { return []; } };
+    const saveLogs = l => localStorage.setItem('premCallLogs', JSON.stringify(l));
+    const getHistory = () => { try { return JSON.parse(localStorage.getItem('premCallHistory')) || []; } catch(e) { return []; } };
+    const saveHistory = h => localStorage.setItem('premCallHistory', JSON.stringify(h));
+
+    function resolveName(num) {
+        const c = getContacts().find(x => x.number === num);
+        return c ? c.name : (num === RAGINA_NUMBER ? 'RAGina AI' : num);
+    }
+    function initials(label) {
+        if (!label) return '👤';
+        if (/^[\d+\s-]+$/.test(label)) return label.replace(/\D/g,'').slice(-2) || '👤';
+        return label.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    }
+    function timeAgo(ts) {
+        const diff = Date.now() - ts;
+        const mins = Math.floor(diff/60000);
+        if (mins < 1) return 'now';
+        if (mins < 60) return mins + 'm';
+        const hrs = Math.floor(mins/60);
+        if (hrs < 24) return hrs + 'h';
+        const days = Math.floor(hrs/24);
+        if (days < 7) return days + 'd';
+        return new Date(ts).toLocaleDateString();
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        $(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+        document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+        if (tab === 'chats') renderChats();
+        if (tab === 'calls') renderCalls();
+        if (tab === 'contacts') renderContacts();
+        if (tab === 'settings') syncSettings();
+        vibrate(5);
+    }
+
+    function renderChats() {
+        const msgs = getMessages();
+        const contacts = getContacts();
+        const list = $('chatList');
+        const pinned = $('pinnedChats');
+        list.innerHTML = ''; pinned.innerHTML = '';
+        const convos = [];
+        Object.keys(msgs).forEach(num => {
+            const arr = msgs[num];
+            if (arr && arr.length) convos.push({ number: num, lastMsg: arr[arr.length-1], unread: arr.filter(m => !m.read && m.sender !== 'me').length });
+        });
+        contacts.forEach(c => {
+            if (!convos.find(x => x.number === c.number)) convos.push({ number: c.number, lastMsg: null, unread: 0 });
+        });
+        convos.sort((a,b) => {
+            const ta = a.lastMsg ? a.lastMsg.time : 0;
+            const tb = b.lastMsg ? b.lastMsg.time : 0;
+            return tb - ta;
+        });
+
+        if (convos.length === 0) { $('chatsEmpty').style.display = 'block'; return; }
+        $('chatsEmpty').style.display = 'none';
+
+        convos.forEach((c, idx) => {
+            const el = document.createElement('div');
+            el.className = 'chat-item';
+            el.dataset.number = c.number;
+            const name = resolveName(c.number);
+            const isOnline = c.number === RAGINA_NUMBER;
+            const preview = c.lastMsg ? (c.lastMsg.type === 'text' ? c.lastMsg.text : (c.lastMsg.type === 'image' ? '📷 Photo' : '📎 File')) : 'Tap to start chatting';
+            const time = c.lastMsg ? timeAgo(c.lastMsg.time) : '';
+            el.innerHTML = `
+                <div class="chat-avatar">${initials(name)}${isOnline ? '<div class="online-dot"></div>' : ''}</div>
+                <div class="chat-body">
+                    <div class="chat-top"><span class="chat-name">${name}</span><span class="chat-time">${time}</span></div>
+                    <div class="chat-preview">${c.number === RAGINA_NUMBER ? '<i class="fas fa-robot"></i> ' : ''}${preview}</div>
+                </div>
+                <div class="chat-meta">
+                    ${c.unread > 0 ? `<span class="unread-badge">${c.unread}</span>` : ''}
+                </div>
+                <div class="chat-actions">
+                    <button class="call-btn" data-num="${c.number}" title="Call"><i class="fas fa-phone"></i></button>
+                    <button class="video-btn" data-num="${c.number}" title="Video" data-video="1"><i class="fas fa-video"></i></button>
+                    <button class="danger del-btn" data-num="${c.number}" title="Delete chat"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+            if (idx < 2) pinned.appendChild(el);
+            else list.appendChild(el);
+        });
+
+        const totalUnread = convos.reduce((s,c) => s + c.unread, 0);
+        const badge = $('chatBadge');
+        if (totalUnread > 0) { badge.textContent = totalUnread; badge.style.display = 'flex'; }
+        else badge.style.display = 'none';
+    }
+
+    function renderCalls() {
+        const h = getHistory();
+        const list = $('callsList');
+        list.innerHTML = '';
+        if (!h.length) { $('callsEmpty').style.display = 'block'; return; }
+        $('callsEmpty').style.display = 'none';
+        h.forEach(en => {
+            const el = document.createElement('div');
+            el.className = 'call-item';
+            const icon = en.direction === 'incoming' ? 'fa-arrow-down' : en.direction === 'outgoing' ? 'fa-arrow-up' : 'fa-phone-slash';
+            const cls = en.direction === 'incoming' ? 'incoming' : en.direction === 'outgoing' ? 'outgoing' : 'missed';
+            const name = resolveName(en.number);
+            el.innerHTML = `
+                <div class="call-icon ${cls}"><i class="fas ${icon}"></i></div>
+                <div class="call-body">
+                    <div class="call-name">${name}</div>
+                    <div class="call-info"><i class="fas fa-clock"></i> ${en.duration || '—'} · ${timeAgo(en.timestamp)}</div>
+                </div>
+                <div class="call-actions">
+                    <button class="call-back" data-num="${en.number}" title="Call back"><i class="fas fa-phone"></i></button>
+                    <button class="video-back" data-num="${en.number}" data-video="1" title="Video call"><i class="fas fa-video"></i></button>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+    }
+
+    function renderContacts() {
+        const c = getContacts();
+        const list = $('contactsList');
+        list.innerHTML = '';
+        const search = ($('contactsSearch')?.value || '').trim().toLowerCase();
+        const filtered = search ? c.filter(x => x.name.toLowerCase().includes(search) || x.number.includes(search)) : c;
+        if (!filtered.length) { $('contactsEmpty').style.display = 'block'; return; }
+        $('contactsEmpty').style.display = 'none';
+        filtered.forEach(contact => {
+            const el = document.createElement('div');
+            el.className = 'contact-item';
+            el.innerHTML = `
+                <div class="contact-avatar">${initials(contact.name)}</div>
+                <div class="contact-body">
+                    <div class="contact-name">${contact.name}</div>
+                    <div class="contact-number">${contact.number}</div>
+                </div>
+                <div class="contact-actions">
+                    <button data-num="${contact.number}" title="Message"><i class="fas fa-comment"></i></button>
+                    <button data-num="${contact.number}" data-call="1" title="Call"><i class="fas fa-phone"></i></button>
+                    <button data-num="${contact.number}" data-video="1" title="Video"><i class="fas fa-video"></i></button>
+                    <button class="danger" data-num="${contact.number}" data-del="1" title="Delete"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+    }
+
+    function syncSettings() {
+        const num = localStorage.getItem('premCallNumber');
+        const verified = localStorage.getItem('premCallVerified') === 'true';
+        if (num && verified) {
+            $('settingsName').textContent = 'User ' + num.slice(-4);
+            $('settingsNumber').textContent = num;
+            $('myNumberDisplay').textContent = num;
+            $('registerBtn').style.display = 'none';
+        } else {
+            $('settingsName').textContent = 'Guest User';
+            $('settingsNumber').textContent = 'Not registered';
+            $('registerBtn').style.display = 'inline-flex';
+        }
+        const s = JSON.parse(localStorage.getItem('premCallSettings') || '{}');
+        transcriptEnabled = s.transcript !== false;
+        aiSummaryEnabled = s.summary !== false;
+        videoDefault = s.videoDefault === true;
+        isLightMode = localStorage.getItem('premCallTheme') === 'light';
+        $('toggleTranscript').classList.toggle('on', transcriptEnabled);
+        $('toggleSummary').classList.toggle('on', aiSummaryEnabled);
+        $('toggleVideoDefault').classList.toggle('on', videoDefault);
+        $('toggleTheme').classList.toggle('on', !isLightMode);
+    }
+    function saveSettings() {
+        localStorage.setItem('premCallSettings', JSON.stringify({
+            transcript: transcriptEnabled, summary: aiSummaryEnabled, videoDefault: videoDefault
+        }));
+    }
+
+    function initPeer(id) {
+        myId = id;
+        if (typeof global.Peer !== 'undefined' && id) {
+            try {
+                peer = new global.Peer(id, { debug: 0, config: ICE_CONFIG });
+                peer.on('open', () => { $('headerStatusDot').className = 'dot online'; });
+                peer.on('disconnected', () => { $('headerStatusDot').className = 'dot offline'; setTimeout(() => { if (peer && !peer.destroyed) try { peer.reconnect(); } catch(e){} }, 3000); });
+                peer.on('error', err => { showToast('Network: ' + err.type); });
+                peer.on('call', call => {
+                    if (raginaCallActive) { call.close(); return; }
+                    incomingCall = call;
+                    showIncomingOverlay(call.peer);
+                });
+                peer.on('connection', conn => {
+                    conn.on('data', data => {
+                        if (data && data.type === 'msg') receiveMessage(conn.peer, data.text);
+                    });
+                });
+            } catch(e) { showToast('Failed to initialize Peer'); }
+        }
+    }
+
+    async function getLocalStream(requestVideo) {
+        const constraints = { audio: { echoCancellation: true, noiseSuppression: true }, video: requestVideo ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } : false };
+        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        try { localStream = await navigator.mediaDevices.getUserMedia(constraints); }
+        catch(err) { if (requestVideo) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); showToast('Camera unavailable — audio only'); } catch(e2) { throw e2; } } else throw err; }
+        if ($('localVideo')) $('localVideo').srcObject = localStream;
+        return localStream;
+    }
+
+    function showIncomingOverlay(id) {
+        $('incomingAvatar').textContent = initials(id);
+        $('incomingName').textContent = resolveName(id);
+        $('incomingNumber').textContent = id;
+        $('incomingOverlay').classList.add('active');
+        vibrate([300, 200, 300]);
+    }
+    function hideIncomingOverlay() {
+        $('incomingOverlay').classList.remove('active');
+    }
+
+    function showCallScreen(id, isCaller, withVideo) {
+        $('callAvatar').textContent = initials(id);
+        $('callName').textContent = resolveName(id);
+        $('callNumber').textContent = id;
+        $('callTimer').textContent = '00:00';
+        $('callRingWrap').classList.add('ring-anim');
+        $('callScreen').classList.add('active');
+        updateVideoUI(false);
+    }
+    function updateVideoUI(enabled) {
+        videoEnabled = enabled;
+        const cs = $('callScreen'), voice = $('voiceUi'), pip = $('localPip');
+        cs.classList.toggle('video-mode', enabled);
+        if (enabled) { voice.classList.add('hidden'); pip.classList.remove('hidden'); }
+        else { voice.classList.remove('hidden'); pip.classList.add('hidden'); }
+        $('videoToggleBtn').classList.toggle('active', enabled);
+    }
+
+    function startTimer() {
+        stopTimer(); timerSeconds = 0;
+        timerInterval = setInterval(() => {
+            timerSeconds++;
+            const mm = String(Math.floor(timerSeconds/60)).padStart(2,'0');
+            const ss = String(timerSeconds%60).padStart(2,'0');
+            $('callTimer').textContent = mm + ':' + ss;
+        }, 1000);
+    }
+    function stopTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = null;
+        const out = String(Math.floor(timerSeconds/60)).padStart(2,'0') + ':' + String(timerSeconds%60).padStart(2,'0');
+        timerSeconds = 0; return out;
+    }
+
+    function startLog(number, type, direction) {
+        currentLog = { id: Date.now(), number, type, direction, started: Date.now(), ended: null, duration: '', summary: '', messages: [] };
+    }
+    function endLog(duration) {
+        if (!currentLog) return null;
+        currentLog.ended = Date.now(); currentLog.duration = duration;
+        const logs = getLogs(); logs.unshift(currentLog); if (logs.length > 20) logs.length = 20;
+        saveLogs(logs); lastLog = currentLog; const done = currentLog; currentLog = null; return done;
+    }
+    function addHistoryEntry(number, direction, duration) {
+        const h = getHistory(); h.unshift({ number, direction, duration: duration || '—', timestamp: Date.now() });
+        if (h.length > 50) h.length = 50; saveHistory(h); renderCalls();
+    }
+
+    function wireCallEvents(call, withVideo, peerId) {
+        if (!activeCalls.includes(call)) activeCalls.push(call);
+        call.on('stream', stream => {
+            if ($('remoteAudio')) { $('remoteAudio').srcObject = stream; $('remoteAudio').play().catch(()=>{}); }
+            if ($('remoteVideo')) { $('remoteVideo').srcObject = stream; $('remoteVideo').play().catch(()=>{}); }
+            const hasVideo = stream.getVideoTracks().length > 0;
+            updateVideoUI(hasVideo || withVideo);
+            $('callRingWrap').classList.remove('ring-anim');
+            if (!timerInterval) startTimer();
+        });
+        call.on('close', () => { const idx = activeCalls.indexOf(call); if (idx > -1) activeCalls.splice(idx,1); if (activeCalls.length === 0) endPeerCall(); });
+        call.on('error', () => { const idx = activeCalls.indexOf(call); if (idx > -1) activeCalls.splice(idx,1); if (activeCalls.length === 0) endPeerCall(); });
+    }
+
+    function endPeerCall() {
+        for (const c of activeCalls) try { c.close(); } catch(e){}
+        activeCalls = [];
+        if (!inCall) return;
+        inCall = false;
+        const dur = stopTimer();
+        const log = endLog(dur);
+        const num = $('callNumber')?.textContent;
+        $('callScreen').classList.remove('active');
+        $('callRingWrap').classList.remove('ring-anim');
+        if ($('remoteAudio')) $('remoteAudio').srcObject = null;
+        if ($('remoteVideo')) $('remoteVideo').srcObject = null;
+        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        if (log) addHistoryEntry(log.number, log.direction, dur);
+        else if (num) addHistoryEntry(num, 'outgoing', dur);
+        showToast('Call ended');
+    }
+
+    function sendMessage(number, text, type='text') {
+        const msgs = getMessages();
+        if (!msgs[number]) msgs[number] = [];
+        msgs[number].push({ sender: 'me', text, type, time: Date.now(), read: true });
+        saveMessages(msgs);
+        if (peer && number !== RAGINA_NUMBER) {
+            try {
+                const conn = peer.connect(number, { metadata: { type: 'chat' } });
+                conn.on('open', () => conn.send({ type: 'msg', text }));
+            } catch(e) {}
+        }
+        renderChats();
+    }
+    function receiveMessage(number, text) {
+        const msgs = getMessages();
+        if (!msgs[number]) msgs[number] = [];
+        msgs[number].push({ sender: 'them', text, type: 'text', time: Date.now(), read: false });
+        saveMessages(msgs);
+        renderChats();
+        showToast('New message from ' + resolveName(number));
+        vibrate([100, 50, 100]);
+    }
+    function markRead(number) {
+        const msgs = getMessages();
+        if (msgs[number]) msgs[number].forEach(m => { if (m.sender !== 'me') m.read = true; });
+        saveMessages(msgs); renderChats();
+    }
+    function deleteChat(number) {
+        const msgs = getMessages(); delete msgs[number]; saveMessages(msgs); renderChats(); showToast('Chat deleted');
+    }
+
+    async function askRAGina(query) {
+        try {
+            const resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: 'You are RAGina, a friendly assistant. Answer concisely:\n' + query }) });
+            if (!resp.ok) throw 0;
+            return (await resp.json()).text || 'No response.';
+        } catch(e) { return "I'm having trouble answering right now. Please try again."; }
+    }
+    function startRAGinaCall() {
+        if (raginaCallActive || inCall) { showToast('Already in a call.'); return; }
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { showToast('Voice calls not supported in this browser.'); return; }
+        unlockSpeech(); raginaCallActive = true;
+        startLog(RAGINA_NUMBER, 'ragina', 'outgoing');
+        $('callAvatar').textContent = '🤖';
+        $('callName').textContent = 'RAGina';
+        $('callNumber').textContent = RAGINA_NUMBER;
+        $('callScreen').classList.add('active');
+        $('callRingWrap').classList.add('ring-anim');
+        startTimer();
+        setTimeout(() => {
+            if (!raginaCallActive) return;
+            $('callRingWrap').classList.remove('ring-anim');
+            const g = "Hello! I'm RAGina. What can I help you with today?";
+            speakText(g);
+            sendMessage(RAGINA_NUMBER, g, 'text');
+            startRAGinaListening();
+        }, 1200);
+    }
+    function startRAGinaListening() {
+        if (!raginaCallActive) return;
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) return;
+        const rec = new SR();
+        rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
+        rec.onresult = e => {
+            const text = e.results[0][0].transcript.trim();
+            if (text) processRAGinaQuery(text);
+        };
+        rec.onend = () => { if (raginaCallActive) setTimeout(startRAGinaListening, 400); };
+        rec.onerror = () => { if (raginaCallActive) setTimeout(startRAGinaListening, 800); };
+        try { rec.start(); } catch(e) { setTimeout(startRAGinaListening, 500); }
+    }
+    async function processRAGinaQuery(text) {
+        if (!raginaCallActive) return;
+        sendMessage(RAGINA_NUMBER, text, 'text');
+        const ans = await askRAGina(text);
+        if (!raginaCallActive) return;
+        sendMessage(RAGINA_NUMBER, ans, 'text');
+        speakText(ans);
+    }
+    function endRAGinaCall() {
+        if (!raginaCallActive) return;
+        raginaCallActive = false;
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        const dur = stopTimer();
+        const log = endLog(dur);
+        $('callScreen').classList.remove('active');
+        $('callRingWrap').classList.remove('ring-anim');
+        if (log) addHistoryEntry(log.number, log.direction, dur);
+        showToast('Call with RAGina ended');
+    }
+    function speakText(text) {
+        if (!window.speechSynthesis) return;
+        const clean = String(text).replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+        if (!clean) return;
+        if (!speechUnlocked) { unlockSpeech(); setTimeout(() => speakText(clean), 300); return; }
+        const u = new SpeechSynthesisUtterance(clean);
+        u.lang = 'en-US'; u.volume = 0.9;
+        u.voice = ttsVoices.find(v => v.lang.startsWith('en') && /female|zira|samantha/i.test(v.name)) || ttsVoices.find(v => v.lang.startsWith('en')) || ttsVoices[0] || null;
+        try { window.speechSynthesis.speak(u); } catch(e){}
+    }
+
+    function showQR() {
+        const num = localStorage.getItem('premCallNumber') || 'Not registered';
+        $('qrContainer').innerHTML = '';
+        try {
+            new QRCode($('qrContainer'), { text: 'premcall://' + num, width: 180, height: 180, colorDark: isLightMode ? '#0f172a' : '#f0f2f7', colorLight: isLightMode ? '#ffffff' : '#0f111a', correctLevel: QRCode.CorrectLevel.M });
+        } catch(e) { $('qrContainer').innerHTML = '<div style="color:var(--text-dim)">QR unavailable</div>'; }
+        $('qrModal').classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('premCallTheme') === 'light') {
+            document.body.classList.add('light-mode'); isLightMode = true;
+            $('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+        }
+        $('themeToggle').addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            isLightMode = document.body.classList.contains('light-mode');
+            localStorage.setItem('premCallTheme', isLightMode ? 'light' : 'dark');
+            $('themeToggle').innerHTML = isLightMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            showToast(isLightMode ? 'Light mode' : 'Dark mode');
+        });
+
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        $('headerSearchBtn').addEventListener('click', () => {
+            const sb = $('searchBar');
+            sb.style.display = sb.style.display === 'none' ? 'block' : 'none';
+            if (sb.style.display === 'block') $('globalSearch').focus();
+        });
+        $('globalSearch').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            document.querySelectorAll('.chat-item, .contact-item, .call-item').forEach(el => {
+                el.style.display = el.textContent.toLowerCase().includes(val) ? 'flex' : 'none';
+            });
+        });
+
+        $('fabBtn').addEventListener('click', () => {
+            $('newChatModal').classList.add('active');
+            renderNewChatList();
+        });
+        $('newChatClose').addEventListener('click', () => $('newChatModal').classList.remove('active'));
+        $('newChatModal').addEventListener('click', e => { if (e.target === $('newChatModal')) $('newChatModal').classList.remove('active'); });
+
+        function renderNewChatList() {
+            const list = $('newChatList');
+            const contacts = getContacts();
+            list.innerHTML = '';
+            if (!contacts.length) { list.innerHTML = '<div class="empty-state"><p>No contacts. Add one in the People tab.</p></div>'; return; }
+            contacts.forEach(c => {
+                const el = document.createElement('div');
+                el.className = 'contact-item';
+                el.innerHTML = `<div class="contact-avatar">${initials(c.name)}</div><div class="contact-body"><div class="contact-name">${c.name}</div><div class="contact-number">${c.number}</div></div><div class="contact-actions"><button data-num="${c.number}" data-msg="1"><i class="fas fa-comment"></i></button><button data-num="${c.number}" data-call="1"><i class="fas fa-phone"></i></button></div>`;
+                list.appendChild(el);
+            });
+        }
+        $('newChatSearch').addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (!val) { renderNewChatList(); return; }
+            const list = $('newChatList'); list.innerHTML = '';
+            if (/^\d{10}$/.test(val)) {
+                const el = document.createElement('div');
+                el.className = 'contact-item';
+                el.innerHTML = `<div class="contact-avatar" style="background:var(--primary); color:#fff;"><i class="fas fa-phone"></i></div><div class="contact-body"><div class="contact-name">${val}</div><div class="contact-number">New number</div></div><div class="contact-actions"><button data-num="${val}" data-msg="1"><i class="fas fa-comment"></i></button><button data-num="${val}" data-call="1"><i class="fas fa-phone"></i></button></div>`;
+                list.appendChild(el);
+            }
+            getContacts().filter(c => c.name.toLowerCase().includes(val.toLowerCase()) || c.number.includes(val)).forEach(c => {
+                const el = document.createElement('div'); el.className = 'contact-item';
+                el.innerHTML = `<div class="contact-avatar">${initials(c.name)}</div><div class="contact-body"><div class="contact-name">${c.name}</div><div class="contact-number">${c.number}</div></div><div class="contact-actions"><button data-num="${c.number}" data-msg="1"><i class="fas fa-comment"></i></button><button data-num="${c.number}" data-call="1"><i class="fas fa-phone"></i></button></div>`;
+                list.appendChild(el);
+            });
+        });
+
+        $('chatList').addEventListener('click', (e) => {
+            const item = e.target.closest('.chat-item');
+            if (!item) return;
+            const num = item.dataset.number;
+            const btn = e.target.closest('button');
+            if (btn) {
+                if (btn.classList.contains('del-btn')) { deleteChat(num); return; }
+                if (btn.dataset.video) { window.location.href = 'messages.html?to=' + num + '&video=1'; return; }
+                if (btn.classList.contains('call-btn')) { PremCall.call(num); return; }
+            }
+            markRead(num);
+            window.location.href = 'messages.html?to=' + num;
+        });
+        $('pinnedChats').addEventListener('click', (e) => {
+            const item = e.target.closest('.chat-item');
+            if (!item) return;
+            const num = item.dataset.number;
+            const btn = e.target.closest('button');
+            if (btn) {
+                if (btn.classList.contains('del-btn')) { deleteChat(num); return; }
+                if (btn.dataset.video) { window.location.href = 'messages.html?to=' + num + '&video=1'; return; }
+                if (btn.classList.contains('call-btn')) { PremCall.call(num); return; }
+            }
+            markRead(num);
+            window.location.href = 'messages.html?to=' + num;
+        });
+
+        $('raginaCard').addEventListener('click', () => {
+            window.location.href = 'messages.html?to=' + RAGINA_NUMBER;
+        });
+
+        $('callsList').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const num = btn.dataset.num;
+            if (btn.dataset.video) PremCall.call(num, true);
+            else PremCall.call(num);
+        });
+
+        $('contactsSearch').addEventListener('input', renderContacts);
+        $('saveContactBtn').addEventListener('click', () => {
+            const name = $('contactNameInput').value.trim();
+            const number = $('contactNumberInput').value.trim();
+            if (!name || !/^\d{10}$/.test(number)) { showToast('Enter valid name and 10-digit number'); return; }
+            const c = getContacts().filter(x => x.number !== number);
+            c.unshift({ name, number, created: Date.now() });
+            saveContacts(c); renderContacts();
+            $('contactNameInput').value = ''; $('contactNumberInput').value = '';
+            showToast('Contact saved');
+        });
+        $('contactsList').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const num = btn.dataset.num;
+            if (btn.dataset.del) { saveContacts(getContacts().filter(x => x.number !== num)); renderContacts(); showToast('Deleted'); return; }
+            if (btn.dataset.msg || btn.dataset.msg === '1') { window.location.href = 'messages.html?to=' + num; return; }
+            if (btn.dataset.video) { window.location.href = 'messages.html?to=' + num + '&video=1'; return; }
+            if (btn.dataset.call) { PremCall.call(num); return; }
+        });
+
+        document.querySelectorAll('.toggle').forEach(t => {
+            t.addEventListener('click', function() {
+                const key = this.dataset.key;
+                const isOn = this.classList.contains('on');
+                this.classList.toggle('on');
+                const newVal = !isOn;
+                if (key === 'transcript') transcriptEnabled = newVal;
+                if (key === 'summary') aiSummaryEnabled = newVal;
+                if (key === 'videoDefault') videoDefault = newVal;
+                if (key === 'theme') {
+                    document.body.classList.toggle('light-mode', !newVal);
+                    isLightMode = !newVal;
+                    localStorage.setItem('premCallTheme', isLightMode ? 'light' : 'dark');
+                    $('themeToggle').innerHTML = isLightMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                }
+                saveSettings();
+                showToast((key === 'transcript' ? 'Transcript' : key === 'summary' ? 'AI Summary' : key === 'videoDefault' ? 'Video default' : 'Theme') + (newVal ? ' on' : ' off'));
+            });
+        });
+        $('registerBtn').addEventListener('click', () => {
+            const phone = prompt('Enter your 10-digit phone number:');
+            if (!phone || !/^\d{10}$/.test(phone)) { showToast('Invalid number'); return; }
+            const uuid = 'user-' + Date.now();
+            localStorage.setItem('premCallNumber', phone);
+            localStorage.setItem('premCallId', uuid);
+            localStorage.setItem('premCallVerified', 'true');
+            localStorage.setItem('premCallRegisteredAt', Date.now());
+            $('myNumberDisplay').textContent = phone;
+            $('registerBtn').style.display = 'none';
+            if (peer) try { peer.destroy(); } catch(e){}
+            PremCall.init(uuid);
+            showToast('Registered as ' + phone);
+        });
+        $('showQRBtn').addEventListener('click', showQR);
+        $('qrClose').addEventListener('click', () => $('qrModal').classList.remove('active'));
+        $('qrModal').addEventListener('click', e => { if (e.target === $('qrModal')) $('qrModal').classList.remove('active'); });
+        $('scanQRBtn').addEventListener('click', () => { showToast('QR Scanner opens in camera app'); });
+        $('clearDataBtn').addEventListener('click', () => {
+            if (!confirm('Clear ALL data? This cannot be undone.')) return;
+            ['premCallContacts','premCallMessages','premCallLogs','premCallHistory','premCallSettings','premCallNumber','premCallId','premCallVerified'].forEach(k => localStorage.removeItem(k));
+            showToast('All data cleared'); renderChats(); renderCalls(); renderContacts(); syncSettings();
+        });
+
+        $('hangupCallBtn').addEventListener('click', () => { if (raginaCallActive) endRAGinaCall(); else endPeerCall(); vibrate(15); });
+        $('muteBtn').addEventListener('click', (e) => {
+            muted = !muted;
+            if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = !muted);
+            e.currentTarget.classList.toggle('active', muted);
+            e.currentTarget.innerHTML = muted ? '<i class="fas fa-microphone-slash"></i>' : '<i class="fas fa-microphone"></i>';
+            showToast(muted ? 'Muted' : 'Unmuted');
+        });
+        $('speakerBtn').addEventListener('click', (e) => {
+            speakerOn = !speakerOn;
+            if ($('remoteAudio')) $('remoteAudio').volume = speakerOn ? 1 : 0.8;
+            e.currentTarget.classList.toggle('active', speakerOn);
+            showToast(speakerOn ? 'Speaker on' : 'Speaker off');
+        });
+        $('videoToggleBtn').addEventListener('click', async () => {
+            if (!inCall) return;
+            const newState = !videoEnabled;
+            if (newState) {
+                try {
+                    const stream = await getLocalStream(true);
+                    const vTrack = stream.getVideoTracks()[0];
+                    if (!vTrack) { showToast('Camera not available'); return; }
+                    for (const call of activeCalls) {
+                        if (call && call.peerConnection) {
+                            const senders = call.peerConnection.getSenders();
+                            const vs = senders.find(s => s.track && s.track.kind === 'video');
+                            if (vs) try { await vs.replaceTrack(vTrack); } catch(e){}
+                        }
+                    }
+                    updateVideoUI(true); showToast('Video on');
+                } catch(e) { showToast('Camera error'); }
+            } else {
+                if (localStream) localStream.getVideoTracks().forEach(t => t.stop());
+                for (const call of activeCalls) {
+                    if (call && call.peerConnection) {
+                        const senders = call.peerConnection.getSenders();
+                        const vs = senders.find(s => s.track && s.track.kind === 'video');
+                        if (vs) try { await vs.replaceTrack(null); } catch(e){}
+                    }
+                }
+                updateVideoUI(false); showToast('Video off');
+            }
+        });
+        $('answerBtn').addEventListener('click', async () => {
+            if (!incomingCall) return;
+            const call = incomingCall; incomingCall = null;
+            hideIncomingOverlay();
+            try {
+                const stream = await getLocalStream(false);
+                startLog(call.peer, 'peer', 'incoming');
+                call.answer(stream);
+                showCallScreen(call.peer, false, false);
+                activeCalls = []; activeCalls.push(call); inCall = true;
+                wireCallEvents(call, false, call.peer);
+            } catch(e) { showToast('Microphone denied.'); }
+        });
+        $('rejectBtn').addEventListener('click', () => {
+            if (incomingCall) { const id = incomingCall.peer; incomingCall.close(); incomingCall = null; addHistoryEntry(id, 'missed', '—'); }
+            hideIncomingOverlay();
+        });
+        $('chatToggleBtn').addEventListener('click', () => {
+            const num = $('callNumber')?.textContent;
+            if (num) window.open('messages.html?to=' + num, '_blank');
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if ($('callScreen').classList.contains('active')) { if (raginaCallActive) endRAGinaCall(); else endPeerCall(); return; }
+                $('newChatModal').classList.remove('active'); $('qrModal').classList.remove('active');
+            }
+        });
+
+        const stored = localStorage.getItem('premCallNumber');
+        const storedId = localStorage.getItem('premCallId');
+        if (stored && localStorage.getItem('premCallVerified') === 'true' && storedId) {
+            $('myNumberDisplay').textContent = stored;
+            initPeer(storedId);
+        } else {
+            $('myNumberDisplay').textContent = 'Guest';
+            initPeer('temp-' + Date.now());
+        }
+
+        if (window.speechSynthesis) {
+            ttsVoices = window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => { ttsVoices = window.speechSynthesis.getVoices(); };
+        }
+
+        renderChats(); renderCalls(); renderContacts(); syncSettings();
+        document.addEventListener('click', () => unlockSpeech(), { once: true });
+
+        // Handle pending call from messages.html
+        const pending = localStorage.getItem('premCallPendingCall');
+        if (pending) {
+            try {
+                const { number, video } = JSON.parse(pending);
+                localStorage.removeItem('premCallPendingCall');
+                setTimeout(() => PremCall.call(number, video), 800);
+            } catch(e) {}
+        }
+    });
+
+    global.PremCall = {
+        RAGINA_NUMBER,
+        init: initPeer,
+        call: function(t, withVideo) {
+            if (t === RAGINA_NUMBER) { startRAGinaCall(); return; }
+            if (!peer) { showToast('Register to call real numbers.'); return; }
+            const useVideo = withVideo || videoDefault;
+            getLocalStream(useVideo).then(stream => {
+                const call = peer.call(t, stream);
+                if (!call) { showToast('Unreachable.'); return; }
+                startLog(t, 'peer', 'outgoing');
+                showCallScreen(t, true, useVideo);
+                activeCalls = []; activeCalls.push(call); inCall = true;
+                wireCallEvents(call, useVideo, t);
+            }).catch(() => showToast('Microphone/Camera denied.'));
+        },
+        sendMessage: sendMessage,
+        getContacts, saveContacts, resolveName, showToast
+    };
+})(window);
+</script>
+</body>
+</html>
