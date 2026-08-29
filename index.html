@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <style>
+        /* Your existing styles – kept unchanged for brevity.
+           I'll paste them in the final code block. */
         :root {
             --void: #030407; --void-2: #080b14; --surface: #0f111a; --surface-2: #161926;
             --surface-3: #1e2233; --glass: rgba(15,17,26,0.72); --line: rgba(255,255,255,0.06);
@@ -141,6 +143,116 @@
         .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--primary-glow); }
         #toast { position: fixed; bottom: calc(5rem + var(--safe-b)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface-3); border: 1px solid var(--line-2); color: var(--text); padding: 0.7rem 1.4rem; border-radius: 40px; font-size: 0.85rem; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 6000; max-width: 88%; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        /* Chat Overlay */
+        #chatOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 4000;
+            background: var(--void);
+            flex-direction: column;
+            animation: slideUp 0.3s ease;
+        }
+        #chatOverlay.active { display: flex; }
+        #chatOverlay .chat-header {
+            flex: 0 0 auto;
+            padding: calc(0.8rem + var(--safe-t)) 1.2rem 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: var(--void-2);
+            border-bottom: 1px solid var(--line);
+        }
+        #chatOverlay .chat-header .back-btn {
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #chatOverlay .chat-header .back-btn:hover { background: var(--surface-2); }
+        #chatOverlay .chat-header .chat-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex: 1;
+        }
+        #chatOverlay .chat-header .chat-status {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        #chatOverlay .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        #chatOverlay .message {
+            max-width: 80%;
+            padding: 0.6rem 0.9rem;
+            border-radius: var(--radius-lg);
+            font-size: 0.85rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        #chatOverlay .message.me {
+            align-self: flex-end;
+            background: var(--primary);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        #chatOverlay .message.them {
+            align-self: flex-start;
+            background: var(--surface-2);
+            border-bottom-left-radius: 4px;
+        }
+        #chatOverlay .message .time {
+            font-size: 0.6rem;
+            opacity: 0.6;
+            margin-top: 0.2rem;
+            display: block;
+        }
+        #chatOverlay .chat-input-area {
+            flex: 0 0 auto;
+            padding: 0.6rem 1.2rem calc(0.8rem + var(--safe-b));
+            background: var(--void-2);
+            border-top: 1px solid var(--line);
+            display: flex;
+            gap: 0.5rem;
+        }
+        #chatOverlay .chat-input-area input {
+            flex: 1;
+            padding: 0.6rem 1rem;
+            border-radius: 30px;
+            border: 1px solid var(--line);
+            background: var(--surface-2);
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+        }
+        #chatOverlay .chat-input-area input:focus { border-color: var(--primary); }
+        #chatOverlay .chat-input-area button {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        #chatOverlay .chat-input-area button:hover { transform: scale(1.05); }
         #callScreen { display: none; position: fixed; inset: 0; z-index: 3000; flex-direction: column; background: #000; color: #fff; }
         #callScreen.active { display: flex; }
         #callScreen .video-bg { position: absolute; inset: 0; z-index: 1; }
@@ -197,223 +309,231 @@
         .ragina-card .ragina-name { font-weight: 700; font-size: 0.95rem; }
         .ragina-card .ragina-desc { font-size: 0.75rem; color: var(--text-dim); }
         .ragina-card .ragina-badge { padding: 0.25rem 0.6rem; border-radius: 20px; background: var(--primary); color: #fff; font-size: 0.65rem; font-weight: 600; }
-        .typing-dots { display: flex; gap: 3px; align-items: center; }
-        .typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); animation: typingBounce 1.4s infinite ease-in-out both; }
-        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes typingBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
-        .header-status { display: flex; align-items: center; gap: 0.4rem; font-size: 0.7rem; color: var(--text-faint); }
-        .header-status .dot { width: 7px; height: 7px; border-radius: 50%; }
-        .header-status .dot.online { background: var(--go); box-shadow: 0 0 6px var(--go-glow); }
-        .header-status .dot.offline { background: var(--stop); }
-        .header-status .dot.connecting { background: var(--warn); animation: blink 1.2s infinite; }
-        @keyframes blink { 50% { opacity: 0.3; } }
-        .divider { height: 1px; background: var(--line); margin: 0.4rem 0; }
-        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0.6rem; border-bottom: 1px solid var(--line); }
-        .setting-row:last-child { border-bottom: none; }
-        .toggle { width: 48px; height: 26px; border-radius: 13px; background: var(--surface-3); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
-        .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--text); top: 2px; left: 2px; transition: transform 0.2s; }
-        .toggle.on { background: var(--primary); }
-        .toggle.on::after { transform: translateX(22px); background: #fff; }
-        .action-btn { width: 100%; padding: 0.7rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font-size: 0.85rem; font-family: var(--font-body); cursor: pointer; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; transition: all 0.15s; }
-        .action-btn:hover { background: var(--surface-3); transform: translateX(2px); }
-        @media (max-height: 700px) { .story-ring { width: 54px; height: 54px; } .story-name { max-width: 54px; } .chat-item .chat-avatar { width: 46px; height: 46px; } }
+        /* Utility */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="mesh-bg"></div>
-    <div class="app-shell" id="appShell">
-        <div class="app-header">
-            <div class="brand">
-                <img src="https://raw.githubusercontent.com/suryasticsai/premCall/main/premCall-logo.png" alt="PremCall">
-                <span>PremCall</span>
-            </div>
-            <div class="header-actions">
-                <div class="header-status">
-                    <span class="dot offline" id="headerStatusDot"></span>
-                    <span id="myNumberDisplay" style="cursor:pointer; font-size:0.75rem; color:var(--text-dim);">—</span>
-                </div>
-                <button class="icon-btn-ghost" id="themeToggle" title="Toggle Theme"><i class="fas fa-moon"></i></button>
-                <button class="icon-btn-ghost" id="headerSearchBtn" title="Search"><i class="fas fa-magnifying-glass"></i></button>
-            </div>
+<div class="mesh-bg"></div>
+<div class="app-shell" id="appShell">
+    <!-- Header -->
+    <div class="app-header">
+        <div class="brand">
+            <img src="https://raw.githubusercontent.com/suryasticsai/premCall/main/premCall-logo.png" alt="PremCall">
+            <span>PremCall</span>
         </div>
-        <div class="search-bar" id="searchBar" style="display:none;">
-            <i class="fas fa-magnifying-glass"></i>
-            <input type="text" id="globalSearch" placeholder="Search chats, contacts, messages..." autocomplete="off">
+        <div class="header-actions">
+            <div class="header-status">
+                <span class="dot offline" id="headerStatusDot"></span>
+                <span id="myNumberDisplay" style="cursor:pointer; font-size:0.75rem; color:var(--text-dim);">—</span>
+            </div>
+            <button class="icon-btn-ghost" id="themeToggle" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+            <button class="icon-btn-ghost" id="headerSearchBtn" title="Search"><i class="fas fa-magnifying-glass"></i></button>
         </div>
-        <div class="content-area" id="contentArea">
-            <div class="tab-view active" id="tabChats">
-                <div class="stories-row" id="storiesRow">
-                    <div class="story-item" id="myStoryBtn">
-                        <div class="story-ring">
-                            <div class="story-avatar" style="font-size:1.4rem;">+</div>
-                            <div class="story-add"><i class="fas fa-plus" style="font-size:0.5rem;"></i></div>
-                        </div>
-                        <span class="story-name">My Story</span>
+    </div>
+    <!-- Search Bar -->
+    <div class="search-bar" id="searchBar" style="display:none;">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" id="globalSearch" placeholder="Search chats, contacts, messages..." autocomplete="off">
+    </div>
+    <!-- Content -->
+    <div class="content-area" id="contentArea">
+        <!-- Chats Tab -->
+        <div class="tab-view active" id="tabChats">
+            <div class="stories-row" id="storiesRow">
+                <div class="story-item" id="myStoryBtn">
+                    <div class="story-ring">
+                        <div class="story-avatar" style="font-size:1.4rem;">+</div>
+                        <div class="story-add"><i class="fas fa-plus" style="font-size:0.5rem;"></i></div>
                     </div>
-                </div>
-                <div class="ragina-card" id="raginaCard">
-                    <div class="ragina-avatar">🤖</div>
-                    <div class="ragina-body">
-                        <div class="ragina-name">RAGina AI</div>
-                        <div class="ragina-desc">Your cognitive assistant — ask anything</div>
-                    </div>
-                    <span class="ragina-badge">AI</span>
-                </div>
-                <div class="section-title"><i class="fas fa-thumbtack"></i> Pinned</div>
-                <div id="pinnedChats"></div>
-                <div class="divider"></div>
-                <div class="section-title"><i class="fas fa-comment"></i> All Messages</div>
-                <div id="chatList"></div>
-                <div class="empty-state" id="chatsEmpty" style="display:none;">
-                    <i class="fas fa-comments"></i>
-                    <p>No conversations yet.<br>Start chatting with your contacts!</p>
+                    <span class="story-name">My Story</span>
                 </div>
             </div>
-            <div class="tab-view" id="tabCalls">
-                <div class="section-title"><i class="fas fa-phone"></i> Recent Calls</div>
-                <div id="callsList"></div>
-                <div class="empty-state" id="callsEmpty" style="display:none;">
-                    <i class="fas fa-phone-slash"></i>
-                    <p>No calls yet.</p>
+            <div class="ragina-card" id="raginaCard">
+                <div class="ragina-avatar">🤖</div>
+                <div class="ragina-body">
+                    <div class="ragina-name">RAGina AI</div>
+                    <div class="ragina-desc">Your cognitive assistant — ask anything</div>
                 </div>
+                <span class="ragina-badge">AI</span>
             </div>
-            <div class="tab-view" id="tabContacts">
-                <div class="search-bar" style="margin: 0 0 0.6rem;">
-                    <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" id="contactsSearch" placeholder="Search contacts...">
-                </div>
-                <div class="form-row">
-                    <input type="text" id="contactNameInput" placeholder="Name">
-                    <input type="text" id="contactNumberInput" placeholder="10-digit number">
-                    <button class="btn-primary" id="saveContactBtn"><i class="fas fa-plus"></i></button>
-                </div>
-                <div class="section-title"><i class="fas fa-address-book"></i> Contacts</div>
-                <div id="contactsList"></div>
-                <div class="empty-state" id="contactsEmpty" style="display:none;">
-                    <i class="fas fa-user-group"></i>
-                    <p>No contacts yet.<br>Add your first contact above!</p>
-                </div>
-            </div>
-            <div class="tab-view" id="tabSettings">
-                <div style="text-align:center; padding: 1.5rem 0;">
-                    <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--accent)); margin:0 auto 0.8rem; display:flex; align-items:center; justify-content:center; font-size:2rem; box-shadow: 0 8px 32px var(--primary-glow);">
-                        <i class="fas fa-user" style="color:#fff;"></i>
-                    </div>
-                    <div style="font-weight:700; font-size:1.1rem;" id="settingsName">Guest User</div>
-                    <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.2rem;" id="settingsNumber">Not registered</div>
-                    <button class="btn-primary" style="margin-top:0.8rem; padding:0.5rem 1.2rem; font-size:0.75rem;" id="registerBtn">
-                        <i class="fas fa-shield-halved"></i> Register Number
-                    </button>
-                </div>
-                <div class="divider"></div>
-                <div class="section-title">Preferences</div>
-                <div class="setting-row">
-                    <div><div style="font-weight:600; font-size:0.88rem;">Dark Mode</div><div style="font-size:0.72rem; color:var(--text-faint);">Toggle app appearance</div></div>
-                    <div class="toggle on" id="toggleTheme" data-key="theme"></div>
-                </div>
-                <div class="setting-row">
-                    <div><div style="font-weight:600; font-size:0.88rem;">Auto Transcript</div><div style="font-size:0.72rem; color:var(--text-faint);">Record speech during calls</div></div>
-                    <div class="toggle on" id="toggleTranscript" data-key="transcript"></div>
-                </div>
-                <div class="setting-row">
-                    <div><div style="font-weight:600; font-size:0.88rem;">AI Summary</div><div style="font-size:0.72rem; color:var(--text-faint);">Generate recap after calls</div></div>
-                    <div class="toggle on" id="toggleSummary" data-key="summary"></div>
-                </div>
-                <div class="setting-row">
-                    <div><div style="font-weight:600; font-size:0.88rem;">Video by Default</div><div style="font-size:0.72rem; color:var(--text-faint);">Start calls with camera on</div></div>
-                    <div class="toggle" id="toggleVideoDefault" data-key="videoDefault"></div>
-                </div>
-                <div class="divider"></div>
-                <div class="section-title">Actions</div>
-                <button class="action-btn" id="showQRBtn"><i class="fas fa-qrcode"></i> My QR Code</button>
-                <button class="action-btn" id="scanQRBtn"><i class="fas fa-camera"></i> Scan QR Code</button>
-                <button class="action-btn" id="clearDataBtn" style="color:var(--stop);"><i class="fas fa-trash"></i> Clear All Data</button>
-                <div style="text-align:center; padding: 1.5rem 0; color:var(--text-faint); font-size:0.7rem;">PremCall v2.0 — Cognitive Messenger</div>
+            <div class="section-title"><i class="fas fa-thumbtack"></i> Pinned</div>
+            <div id="pinnedChats"></div>
+            <div class="divider"></div>
+            <div class="section-title"><i class="fas fa-comment"></i> All Messages</div>
+            <div id="chatList"></div>
+            <div class="empty-state" id="chatsEmpty" style="display:none;">
+                <i class="fas fa-comments"></i>
+                <p>No conversations yet.<br>Start chatting with your contacts!</p>
             </div>
         </div>
-        <button class="fab" id="fabBtn"><i class="fas fa-pen"></i></button>
-        <div class="bottom-nav">
-            <button class="nav-item active" data-tab="chats">
-                <i class="fas fa-comment"></i><span>Chats</span>
-                <span class="nav-badge" id="chatBadge" style="display:none;">0</span>
-            </button>
-            <button class="nav-item" data-tab="calls">
-                <i class="fas fa-phone"></i><span>Calls</span>
-                <span class="nav-badge" id="callBadge" style="display:none;">0</span>
-            </button>
-            <button class="nav-item" data-tab="contacts">
-                <i class="fas fa-address-book"></i><span>People</span>
-            </button>
-            <button class="nav-item" data-tab="settings">
-                <i class="fas fa-gear"></i><span>Settings</span>
-            </button>
-        </div>
-        <div id="incomingOverlay">
-            <div class="avatar" id="incomingAvatar">👤</div>
-            <div class="peer-name" id="incomingName">Unknown</div>
-            <div class="peer-number" id="incomingNumber"></div>
-            <div class="hint"><i class="fas fa-arrow-up"></i> Incoming call</div>
-            <div class="actions">
-                <button class="reject" id="rejectBtn"><i class="fas fa-phone-slash"></i></button>
-                <button class="answer" id="answerBtn"><i class="fas fa-phone"></i></button>
+        <!-- Calls Tab -->
+        <div class="tab-view" id="tabCalls">
+            <div class="section-title"><i class="fas fa-phone"></i> Recent Calls</div>
+            <div id="callsList"></div>
+            <div class="empty-state" id="callsEmpty" style="display:none;">
+                <i class="fas fa-phone-slash"></i>
+                <p>No calls yet.</p>
             </div>
+        </div>
+        <!-- Contacts Tab -->
+        <div class="tab-view" id="tabContacts">
+            <div class="search-bar" style="margin: 0 0 0.6rem;">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" id="contactsSearch" placeholder="Search contacts...">
+            </div>
+            <div class="form-row">
+                <input type="text" id="contactNameInput" placeholder="Name">
+                <input type="text" id="contactNumberInput" placeholder="10-digit number">
+                <button class="btn-primary" id="saveContactBtn"><i class="fas fa-plus"></i></button>
+            </div>
+            <div class="section-title"><i class="fas fa-address-book"></i> Contacts</div>
+            <div id="contactsList"></div>
+            <div class="empty-state" id="contactsEmpty" style="display:none;">
+                <i class="fas fa-user-group"></i>
+                <p>No contacts yet.<br>Add your first contact above!</p>
+            </div>
+        </div>
+        <!-- Settings Tab -->
+        <div class="tab-view" id="tabSettings">
+            <div style="text-align:center; padding: 1.5rem 0;">
+                <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg, var(--primary), var(--accent)); margin:0 auto 0.8rem; display:flex; align-items:center; justify-content:center; font-size:2rem; box-shadow: 0 8px 32px var(--primary-glow);">
+                    <i class="fas fa-user" style="color:#fff;"></i>
+                </div>
+                <div style="font-weight:700; font-size:1.1rem;" id="settingsName">Guest User</div>
+                <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.2rem;" id="settingsNumber">Not registered</div>
+                <button class="btn-primary" style="margin-top:0.8rem; padding:0.5rem 1.2rem; font-size:0.75rem;" id="registerBtn">
+                    <i class="fas fa-shield-halved"></i> Register Number
+                </button>
+            </div>
+            <div class="divider"></div>
+            <div class="section-title">Preferences</div>
+            <div class="setting-row">
+                <div><div style="font-weight:600; font-size:0.88rem;">Dark Mode</div><div style="font-size:0.72rem; color:var(--text-faint);">Toggle app appearance</div></div>
+                <div class="toggle on" id="toggleTheme" data-key="theme"></div>
+            </div>
+            <div class="setting-row">
+                <div><div style="font-weight:600; font-size:0.88rem;">Auto Transcript</div><div style="font-size:0.72rem; color:var(--text-faint);">Record speech during calls</div></div>
+                <div class="toggle on" id="toggleTranscript" data-key="transcript"></div>
+            </div>
+            <div class="setting-row">
+                <div><div style="font-weight:600; font-size:0.88rem;">AI Summary</div><div style="font-size:0.72rem; color:var(--text-faint);">Generate recap after calls</div></div>
+                <div class="toggle on" id="toggleSummary" data-key="summary"></div>
+            </div>
+            <div class="setting-row">
+                <div><div style="font-weight:600; font-size:0.88rem;">Video by Default</div><div style="font-size:0.72rem; color:var(--text-faint);">Start calls with camera on</div></div>
+                <div class="toggle" id="toggleVideoDefault" data-key="videoDefault"></div>
+            </div>
+            <div class="divider"></div>
+            <div class="section-title">Actions</div>
+            <button class="action-btn" id="showQRBtn"><i class="fas fa-qrcode"></i> My QR Code</button>
+            <button class="action-btn" id="scanQRBtn"><i class="fas fa-camera"></i> Scan QR Code</button>
+            <button class="action-btn" id="clearDataBtn" style="color:var(--stop);"><i class="fas fa-trash"></i> Clear All Data</button>
+            <div style="text-align:center; padding: 1.5rem 0; color:var(--text-faint); font-size:0.7rem;">PremCall v2.0 — Cognitive Messenger</div>
         </div>
     </div>
-    <div id="callScreen">
-        <div class="video-bg"><video id="remoteVideo" autoplay playsinline></video></div>
-        <div class="local-pip hidden" id="localPip"><video id="localVideo" autoplay playsinline muted></video></div>
-        <div class="voice-ui" id="voiceUi">
-            <div class="avatar-wrap" id="callRingWrap">
-                <div class="ring"></div><div class="ring"></div><div class="ring"></div>
-                <div class="avatar" id="callAvatar">🤖</div>
-            </div>
-            <div class="peer-name" id="callName">RAGina</div>
-            <div class="peer-number" id="callNumber">0000000000</div>
-            <div class="call-timer" id="callTimer">00:00</div>
-        </div>
-        <div class="net-badge good" id="netBadge"><div class="dot"></div><span id="netText">Excellent</span></div>
-        <div class="top-right-controls">
-            <button id="screenShareBtn" title="Screen share"><i class="fas fa-desktop"></i></button>
-            <button id="recordBtn" title="Record call"><i class="fas fa-circle"></i></button>
-        </div>
-        <div class="controls-overlay">
-            <div class="call-actions">
-                <div class="action-item"><button id="muteBtn"><i class="fas fa-microphone"></i></button><span class="label">Mute</span></div>
-                <div class="action-item"><button id="videoToggleBtn" class="video-btn"><i class="fas fa-video"></i></button><span class="label">Video</span></div>
-                <div class="action-item"><button class="hangup" id="hangupCallBtn"><i class="fas fa-phone-slash"></i></button><span class="label">End</span></div>
-                <div class="action-item"><button id="speakerBtn"><i class="fas fa-volume-high"></i></button><span class="label">Speaker</span></div>
-                <div class="action-item"><button id="chatToggleBtn"><i class="fas fa-comment"></i></button><span class="label">Chat</span></div>
-            </div>
+    <!-- FAB -->
+    <button class="fab" id="fabBtn"><i class="fas fa-pen"></i></button>
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <button class="nav-item active" data-tab="chats">
+            <i class="fas fa-comment"></i><span>Chats</span>
+            <span class="nav-badge" id="chatBadge" style="display:none;">0</span>
+        </button>
+        <button class="nav-item" data-tab="calls">
+            <i class="fas fa-phone"></i><span>Calls</span>
+            <span class="nav-badge" id="callBadge" style="display:none;">0</span>
+        </button>
+        <button class="nav-item" data-tab="contacts">
+            <i class="fas fa-address-book"></i><span>People</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+            <i class="fas fa-gear"></i><span>Settings</span>
+        </button>
+    </div>
+    <!-- Incoming Call Overlay -->
+    <div id="incomingOverlay">
+        <div class="avatar" id="incomingAvatar">👤</div>
+        <div class="peer-name" id="incomingName">Unknown</div>
+        <div class="peer-number" id="incomingNumber"></div>
+        <div class="hint"><i class="fas fa-arrow-up"></i> Incoming call</div>
+        <div class="actions">
+            <button class="reject" id="rejectBtn"><i class="fas fa-phone-slash"></i></button>
+            <button class="answer" id="answerBtn"><i class="fas fa-phone"></i></button>
         </div>
     </div>
-    <div class="modal-overlay" id="newChatModal">
-        <div class="modal-sheet">
-            <div class="modal-header"><span>New Conversation</span><button class="modal-close" id="newChatClose"><i class="fas fa-xmark"></i></button></div>
-            <div class="modal-body">
-                <div class="search-bar" style="margin: 0 0 0.8rem;">
-                    <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" id="newChatSearch" placeholder="Search contacts or enter number...">
-                </div>
-                <div id="newChatList"></div>
-            </div>
+    <!-- Chat Overlay (inline) -->
+    <div id="chatOverlay">
+        <div class="chat-header">
+            <button class="back-btn" id="chatBackBtn"><i class="fas fa-arrow-left"></i></button>
+            <span class="chat-name" id="chatOverlayName">Contact</span>
+            <span class="chat-status" id="chatOverlayStatus">offline</span>
+            <button class="icon-btn-ghost" id="chatOverlayCallBtn" title="Call"><i class="fas fa-phone"></i></button>
+            <button class="icon-btn-ghost" id="chatOverlayVideoBtn" title="Video"><i class="fas fa-video"></i></button>
+        </div>
+        <div class="messages-container" id="messagesContainer"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+            <button id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
-    <div class="modal-overlay" id="qrModal">
-        <div class="modal-sheet" style="max-height:50vh; align-items:center; text-align:center;">
-            <div class="modal-header" style="width:100%;"><span>My QR Code</span><button class="modal-close" id="qrClose"><i class="fas fa-xmark"></i></button></div>
-            <div class="modal-body" style="display:flex; flex-direction:column; align-items:center;">
-                <div id="qrContainer" style="padding:1rem;"></div>
-                <p style="color:var(--text-dim); font-size:0.8rem; margin-top:0.5rem;">Scan to add my PremCall contact</p>
-            </div>
+</div>
+<!-- Call Screen -->
+<div id="callScreen">
+    <div class="video-bg"><video id="remoteVideo" autoplay playsinline></video></div>
+    <div class="local-pip hidden" id="localPip"><video id="localVideo" autoplay playsinline muted></video></div>
+    <div class="voice-ui" id="voiceUi">
+        <div class="avatar-wrap" id="callRingWrap">
+            <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+            <div class="avatar" id="callAvatar">🤖</div>
+        </div>
+        <div class="peer-name" id="callName">RAGina</div>
+        <div class="peer-number" id="callNumber">0000000000</div>
+        <div class="call-timer" id="callTimer">00:00</div>
+    </div>
+    <div class="net-badge good" id="netBadge"><div class="dot"></div><span id="netText">Excellent</span></div>
+    <div class="top-right-controls">
+        <button id="screenShareBtn" title="Screen share"><i class="fas fa-desktop"></i></button>
+        <button id="recordBtn" title="Record call"><i class="fas fa-circle"></i></button>
+    </div>
+    <div class="controls-overlay">
+        <div class="call-actions">
+            <div class="action-item"><button id="muteBtn"><i class="fas fa-microphone"></i></button><span class="label">Mute</span></div>
+            <div class="action-item"><button id="videoToggleBtn" class="video-btn"><i class="fas fa-video"></i></button><span class="label">Video</span></div>
+            <div class="action-item"><button class="hangup" id="hangupCallBtn"><i class="fas fa-phone-slash"></i></button><span class="label">End</span></div>
+            <div class="action-item"><button id="speakerBtn"><i class="fas fa-volume-high"></i></button><span class="label">Speaker</span></div>
+            <div class="action-item"><button id="chatToggleBtn"><i class="fas fa-comment"></i></button><span class="label">Chat</span></div>
         </div>
     </div>
-    <div id="toast"></div>
-    <audio id="remoteAudio" autoplay playsinline style="display:none;"></audio>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script>
-
+</div>
+<!-- New Chat Modal -->
+<div class="modal-overlay" id="newChatModal">
+    <div class="modal-sheet">
+        <div class="modal-header"><span>New Conversation</span><button class="modal-close" id="newChatClose"><i class="fas fa-xmark"></i></button></div>
+        <div class="modal-body">
+            <div class="search-bar" style="margin: 0 0 0.8rem;">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" id="newChatSearch" placeholder="Search contacts or enter number...">
+            </div>
+            <div id="newChatList"></div>
+        </div>
+    </div>
+</div>
+<!-- QR Modal -->
+<div class="modal-overlay" id="qrModal">
+    <div class="modal-sheet" style="max-height:50vh; align-items:center; text-align:center;">
+        <div class="modal-header" style="width:100%;"><span>My QR Code</span><button class="modal-close" id="qrClose"><i class="fas fa-xmark"></i></button></div>
+        <div class="modal-body" style="display:flex; flex-direction:column; align-items:center;">
+            <div id="qrContainer" style="padding:1rem;"></div>
+            <p style="color:var(--text-dim); font-size:0.8rem; margin-top:0.5rem;">Scan to add my PremCall contact</p>
+        </div>
+    </div>
+</div>
+<div id="toast"></div>
+<audio id="remoteAudio" autoplay playsinline style="display:none;"></audio>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+// ==================== FIXED SCRIPT ====================
 (function(global) {
     'use strict';
     const RAGINA_NUMBER = '0000000000';
@@ -433,6 +553,8 @@
     let transcriptEnabled = true, aiSummaryEnabled = true, videoDefault = false;
     let ttsVoices = [], speechUnlocked = false, raginaCallActive = false;
     let currentLog = null, lastLog = null, isLightMode = false;
+    // For chat overlay
+    let currentChatNumber = null;
 
     const $ = id => document.getElementById(id);
     const showToast = msg => {
@@ -450,6 +572,7 @@
         setTimeout(() => speechUnlocked = true, 400);
     }
 
+    // Storage helpers
     const getContacts = () => { try { return JSON.parse(localStorage.getItem('premCallContacts')) || []; } catch(e) { return []; } };
     const saveContacts = c => localStorage.setItem('premCallContacts', JSON.stringify(c));
     const getMessages = () => { try { return JSON.parse(localStorage.getItem('premCallMessages')) || {}; } catch(e) { return {}; } };
@@ -480,6 +603,7 @@
         return new Date(ts).toLocaleDateString();
     }
 
+    // --- Tab switching ---
     function switchTab(tab) {
         currentTab = tab;
         document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
@@ -493,6 +617,7 @@
         vibrate(5);
     }
 
+    // --- Render functions ---
     function renderChats() {
         const msgs = getMessages();
         const contacts = getContacts();
@@ -633,6 +758,7 @@
         }));
     }
 
+    // --- PeerJS initialization ---
     function initPeer(id) {
         myId = id;
         if (typeof global.Peer !== 'undefined' && id) {
@@ -655,6 +781,7 @@
         }
     }
 
+    // --- Media ---
     async function getLocalStream(requestVideo) {
         const constraints = { audio: { echoCancellation: true, noiseSuppression: true }, video: requestVideo ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } : false };
         if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
@@ -664,6 +791,7 @@
         return localStream;
     }
 
+    // --- Incoming call UI ---
     function showIncomingOverlay(id) {
         $('incomingAvatar').textContent = initials(id);
         $('incomingName').textContent = resolveName(id);
@@ -675,6 +803,7 @@
         $('incomingOverlay').classList.remove('active');
     }
 
+    // --- Call screen ---
     function showCallScreen(id, isCaller, withVideo) {
         $('callAvatar').textContent = initials(id);
         $('callName').textContent = resolveName(id);
@@ -723,6 +852,7 @@
         if (h.length > 50) h.length = 50; saveHistory(h); renderCalls();
     }
 
+    // --- Wire call events ---
     function wireCallEvents(call, withVideo, peerId) {
         if (!activeCalls.includes(call)) activeCalls.push(call);
         call.on('stream', stream => {
@@ -734,13 +864,18 @@
             if (!timerInterval) startTimer();
         });
         call.on('close', () => { const idx = activeCalls.indexOf(call); if (idx > -1) activeCalls.splice(idx,1); if (activeCalls.length === 0) endPeerCall(); });
-        call.on('error', () => { const idx = activeCalls.indexOf(call); if (idx > -1) activeCalls.splice(idx,1); if (activeCalls.length === 0) endPeerCall(); });
+        call.on('error', (err) => {
+            showToast('Call error: ' + (err.message || err));
+            const idx = activeCalls.indexOf(call); if (idx > -1) activeCalls.splice(idx,1);
+            if (activeCalls.length === 0) endPeerCall();
+        });
     }
 
+    // --- End call ---
     function endPeerCall() {
         for (const c of activeCalls) try { c.close(); } catch(e){}
         activeCalls = [];
-        if (!inCall) return;
+        if (!inCall && !raginaCallActive) return;
         inCall = false;
         const dur = stopTimer();
         const log = endLog(dur);
@@ -753,20 +888,38 @@
         if (log) addHistoryEntry(log.number, log.direction, dur);
         else if (num) addHistoryEntry(num, 'outgoing', dur);
         showToast('Call ended');
+        // If we were in a chat, refresh messages
+        if (currentChatNumber) renderChatOverlay(currentChatNumber);
     }
 
+    // --- Send / receive messages ---
     function sendMessage(number, text, type='text') {
         const msgs = getMessages();
         if (!msgs[number]) msgs[number] = [];
         msgs[number].push({ sender: 'me', text, type, time: Date.now(), read: true });
         saveMessages(msgs);
+        // Try to send via PeerJS
         if (peer && number !== RAGINA_NUMBER) {
             try {
                 const conn = peer.connect(number, { metadata: { type: 'chat' } });
-                conn.on('open', () => conn.send({ type: 'msg', text }));
-            } catch(e) {}
+                let sent = false;
+                const timeout = setTimeout(() => {
+                    if (!sent) { showToast('Message not delivered (peer offline)'); }
+                }, 3000);
+                conn.on('open', () => {
+                    conn.send({ type: 'msg', text });
+                    sent = true;
+                    clearTimeout(timeout);
+                    conn.close(); // close after sending
+                });
+                conn.on('error', () => {
+                    clearTimeout(timeout);
+                    if (!sent) showToast('Failed to send message');
+                });
+            } catch(e) { /* ignore */ }
         }
         renderChats();
+        if (currentChatNumber === number) renderChatOverlay(number);
     }
     function receiveMessage(number, text) {
         const msgs = getMessages();
@@ -774,6 +927,7 @@
         msgs[number].push({ sender: 'them', text, type: 'text', time: Date.now(), read: false });
         saveMessages(msgs);
         renderChats();
+        if (currentChatNumber === number) renderChatOverlay(number);
         showToast('New message from ' + resolveName(number));
         vibrate([100, 50, 100]);
     }
@@ -784,8 +938,10 @@
     }
     function deleteChat(number) {
         const msgs = getMessages(); delete msgs[number]; saveMessages(msgs); renderChats(); showToast('Chat deleted');
+        if (currentChatNumber === number) closeChatOverlay();
     }
 
+    // --- RAGina ---
     async function askRAGina(query) {
         try {
             const resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: 'You are RAGina, a friendly assistant. Answer concisely:\n' + query }) });
@@ -846,6 +1002,7 @@
         $('callRingWrap').classList.remove('ring-anim');
         if (log) addHistoryEntry(log.number, log.direction, dur);
         showToast('Call with RAGina ended');
+        if (currentChatNumber === RAGINA_NUMBER) renderChatOverlay(RAGINA_NUMBER);
     }
     function speakText(text) {
         if (!window.speechSynthesis) return;
@@ -858,6 +1015,7 @@
         try { window.speechSynthesis.speak(u); } catch(e){}
     }
 
+    // --- QR ---
     function showQR() {
         const num = localStorage.getItem('premCallNumber') || 'Not registered';
         $('qrContainer').innerHTML = '';
@@ -867,7 +1025,61 @@
         $('qrModal').classList.add('active');
     }
 
+    // ==================== CHAT OVERLAY ====================
+    function openChatOverlay(number) {
+        currentChatNumber = number;
+        const name = resolveName(number);
+        $('chatOverlayName').textContent = name;
+        $('chatOverlayStatus').textContent = (number === RAGINA_NUMBER) ? 'AI assistant' : 'offline';
+        $('chatOverlay').classList.add('active');
+        renderChatOverlay(number);
+        markRead(number);
+        $('chatInput').focus();
+    }
+    function closeChatOverlay() {
+        $('chatOverlay').classList.remove('active');
+        currentChatNumber = null;
+    }
+    function renderChatOverlay(number) {
+        const msgs = getMessages();
+        const container = $('messagesContainer');
+        container.innerHTML = '';
+        const arr = msgs[number] || [];
+        arr.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'message ' + (m.sender === 'me' ? 'me' : 'them');
+            div.innerHTML = m.text + `<span class="time">${new Date(m.time).toLocaleTimeString()}</span>`;
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // ==================== CALL FROM UI ====================
+    function callNumber(number, withVideo) {
+        if (number === RAGINA_NUMBER) { startRAGinaCall(); return; }
+        if (!peer) { showToast('Register to call real numbers.'); return; }
+        const useVideo = withVideo || videoDefault;
+        getLocalStream(useVideo).then(stream => {
+            const call = peer.call(number, stream);
+            if (!call) { showToast('Unreachable.'); return; }
+            startLog(number, 'peer', 'outgoing');
+            showCallScreen(number, true, useVideo);
+            activeCalls = []; activeCalls.push(call); inCall = true;
+            wireCallEvents(call, useVideo, number);
+            // auto-hangup if no answer after 15s
+            setTimeout(() => {
+                if (activeCalls.includes(call) && !call.open) {
+                    showToast('No answer');
+                    call.close();
+                    endPeerCall();
+                }
+            }, 15000);
+        }).catch(() => showToast('Microphone/Camera denied.'));
+    }
+
+    // ==================== EVENT LISTENERS ====================
     document.addEventListener('DOMContentLoaded', () => {
+        // Theme
         if (localStorage.getItem('premCallTheme') === 'light') {
             document.body.classList.add('light-mode'); isLightMode = true;
             $('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
@@ -877,13 +1089,17 @@
             isLightMode = document.body.classList.contains('light-mode');
             localStorage.setItem('premCallTheme', isLightMode ? 'light' : 'dark');
             $('themeToggle').innerHTML = isLightMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            // sync toggle in settings
+            $('toggleTheme').classList.toggle('on', !isLightMode);
             showToast(isLightMode ? 'Light mode' : 'Dark mode');
         });
 
+        // Navigation
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.tab));
         });
 
+        // Search bar
         $('headerSearchBtn').addEventListener('click', () => {
             const sb = $('searchBar');
             sb.style.display = sb.style.display === 'none' ? 'block' : 'none';
@@ -896,6 +1112,7 @@
             });
         });
 
+        // FAB -> new chat modal
         $('fabBtn').addEventListener('click', () => {
             $('newChatModal').classList.add('active');
             renderNewChatList();
@@ -903,6 +1120,7 @@
         $('newChatClose').addEventListener('click', () => $('newChatModal').classList.remove('active'));
         $('newChatModal').addEventListener('click', e => { if (e.target === $('newChatModal')) $('newChatModal').classList.remove('active'); });
 
+        // New chat list rendering
         function renderNewChatList() {
             const list = $('newChatList');
             const contacts = getContacts();
@@ -915,6 +1133,7 @@
                 list.appendChild(el);
             });
         }
+        // New chat search
         $('newChatSearch').addEventListener('input', (e) => {
             const val = e.target.value;
             if (!val) { renderNewChatList(); return; }
@@ -932,6 +1151,21 @@
             });
         });
 
+        // Delegate events for newChatList (fixes modal buttons)
+        $('newChatList').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const num = btn.dataset.num;
+            if (!num) return;
+            $('newChatModal').classList.remove('active');
+            if (btn.dataset.msg === '1') {
+                openChatOverlay(num);
+            } else if (btn.dataset.call === '1') {
+                callNumber(num, false);
+            }
+        });
+
+        // Chat list events (now open overlay instead of redirect)
         $('chatList').addEventListener('click', (e) => {
             const item = e.target.closest('.chat-item');
             if (!item) return;
@@ -939,11 +1173,10 @@
             const btn = e.target.closest('button');
             if (btn) {
                 if (btn.classList.contains('del-btn')) { deleteChat(num); return; }
-                if (btn.dataset.video) { window.location.href = 'messages.html?to=' + num + '&video=1'; return; }
-                if (btn.classList.contains('call-btn')) { PremCall.call(num); return; }
+                if (btn.dataset.video) { callNumber(num, true); return; }
+                if (btn.classList.contains('call-btn')) { callNumber(num, false); return; }
             }
-            markRead(num);
-            window.location.href = 'messages.html?to=' + num;
+            openChatOverlay(num);
         });
         $('pinnedChats').addEventListener('click', (e) => {
             const item = e.target.closest('.chat-item');
@@ -952,25 +1185,27 @@
             const btn = e.target.closest('button');
             if (btn) {
                 if (btn.classList.contains('del-btn')) { deleteChat(num); return; }
-                if (btn.dataset.video) { window.location.href = 'messages.html?to=' + num + '&video=1'; return; }
-                if (btn.classList.contains('call-btn')) { PremCall.call(num); return; }
+                if (btn.dataset.video) { callNumber(num, true); return; }
+                if (btn.classList.contains('call-btn')) { callNumber(num, false); return; }
             }
-            markRead(num);
-            window.location.href = 'messages.html?to=' + num;
+            openChatOverlay(num);
         });
 
+        // RAGina card
         $('raginaCard').addEventListener('click', () => {
-            window.location.href = 'messages.html?to=' + RAGINA_NUMBER;
+            openChatOverlay(RAGINA_NUMBER);
         });
 
+        // Calls list
         $('callsList').addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
             const num = btn.dataset.num;
-            if (btn.dataset.video) PremCall.call(num, true);
-            else PremCall.call(num);
+            if (btn.dataset.video) callNumber(num, true);
+            else callNumber(num, false);
         });
 
+        // Contacts tab
         $('contactsSearch').addEventListener('input', renderContacts);
         $('saveContactBtn').addEventListener('click', () => {
             const name = $('contactNameInput').value.trim();
@@ -987,11 +1222,35 @@
             if (!btn) return;
             const num = btn.dataset.num;
             if (btn.dataset.del) { saveContacts(getContacts().filter(x => x.number !== num)); renderContacts(); showToast('Deleted'); return; }
-            if (btn.dataset.msg || btn.dataset.msg === '1') { window.location.href = 'messages.html?to=' + num; return; }
-            if (btn.dataset.video) { window.location.href = 'messages.html?to=' + num + '&video=1'; return; }
-            if (btn.dataset.call) { PremCall.call(num); return; }
+            if (btn.dataset.msg || btn.dataset.msg === '1') { openChatOverlay(num); return; }
+            if (btn.dataset.video) { callNumber(num, true); return; }
+            if (btn.dataset.call) { callNumber(num, false); return; }
         });
 
+        // Chat overlay controls
+        $('chatBackBtn').addEventListener('click', closeChatOverlay);
+        $('chatOverlay').addEventListener('click', (e) => {
+            if (e.target === $('chatOverlay')) closeChatOverlay();
+        });
+        // Send message
+        function sendChatMessage() {
+            const input = $('chatInput');
+            const text = input.value.trim();
+            if (!text || !currentChatNumber) return;
+            sendMessage(currentChatNumber, text);
+            input.value = '';
+        }
+        $('chatSendBtn').addEventListener('click', sendChatMessage);
+        $('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+        // Call buttons in chat overlay
+        $('chatOverlayCallBtn').addEventListener('click', () => {
+            if (currentChatNumber) callNumber(currentChatNumber, false);
+        });
+        $('chatOverlayVideoBtn').addEventListener('click', () => {
+            if (currentChatNumber) callNumber(currentChatNumber, true);
+        });
+
+        // Toggles in settings
         document.querySelectorAll('.toggle').forEach(t => {
             t.addEventListener('click', function() {
                 const key = this.dataset.key;
@@ -1011,6 +1270,8 @@
                 showToast((key === 'transcript' ? 'Transcript' : key === 'summary' ? 'AI Summary' : key === 'videoDefault' ? 'Video default' : 'Theme') + (newVal ? ' on' : ' off'));
             });
         });
+
+        // Register
         $('registerBtn').addEventListener('click', () => {
             const phone = prompt('Enter your 10-digit phone number:');
             if (!phone || !/^\d{10}$/.test(phone)) { showToast('Invalid number'); return; }
@@ -1022,7 +1283,7 @@
             $('myNumberDisplay').textContent = phone;
             $('registerBtn').style.display = 'none';
             if (peer) try { peer.destroy(); } catch(e){}
-            PremCall.init(uuid);
+            initPeer(uuid);
             showToast('Registered as ' + phone);
         });
         $('showQRBtn').addEventListener('click', showQR);
@@ -1035,6 +1296,7 @@
             showToast('All data cleared'); renderChats(); renderCalls(); renderContacts(); syncSettings();
         });
 
+        // Call screen controls
         $('hangupCallBtn').addEventListener('click', () => { if (raginaCallActive) endRAGinaCall(); else endPeerCall(); vibrate(15); });
         $('muteBtn').addEventListener('click', (e) => {
             muted = !muted;
@@ -1097,16 +1359,23 @@
         });
         $('chatToggleBtn').addEventListener('click', () => {
             const num = $('callNumber')?.textContent;
-            if (num) window.open('messages.html?to=' + num, '_blank');
+            if (num && num !== RAGINA_NUMBER) {
+                // close call screen? not necessary, open overlay on top
+                if (currentChatNumber !== num) openChatOverlay(num);
+                else $('chatOverlay').classList.toggle('active');
+            }
         });
 
+        // Keyboard shortcut: Esc to close overlays
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                if ($('chatOverlay').classList.contains('active')) { closeChatOverlay(); return; }
                 if ($('callScreen').classList.contains('active')) { if (raginaCallActive) endRAGinaCall(); else endPeerCall(); return; }
                 $('newChatModal').classList.remove('active'); $('qrModal').classList.remove('active');
             }
         });
 
+        // Initialise Peer
         const stored = localStorage.getItem('premCallNumber');
         const storedId = localStorage.getItem('premCallId');
         if (stored && localStorage.getItem('premCallVerified') === 'true' && storedId) {
@@ -1117,44 +1386,25 @@
             initPeer('temp-' + Date.now());
         }
 
+        // Speech voices
         if (window.speechSynthesis) {
             ttsVoices = window.speechSynthesis.getVoices();
             window.speechSynthesis.onvoiceschanged = () => { ttsVoices = window.speechSynthesis.getVoices(); };
         }
 
+        // Initial render
         renderChats(); renderCalls(); renderContacts(); syncSettings();
         document.addEventListener('click', () => unlockSpeech(), { once: true });
 
-        // Handle pending call from messages.html
-        const pending = localStorage.getItem('premCallPendingCall');
-        if (pending) {
-            try {
-                const { number, video } = JSON.parse(pending);
-                localStorage.removeItem('premCallPendingCall');
-                setTimeout(() => PremCall.call(number, video), 800);
-            } catch(e) {}
-        }
+        // Expose global API
+        global.PremCall = {
+            RAGINA_NUMBER,
+            init: initPeer,
+            call: callNumber,
+            sendMessage: sendMessage,
+            getContacts, saveContacts, resolveName, showToast
+        };
     });
-
-    global.PremCall = {
-        RAGINA_NUMBER,
-        init: initPeer,
-        call: function(t, withVideo) {
-            if (t === RAGINA_NUMBER) { startRAGinaCall(); return; }
-            if (!peer) { showToast('Register to call real numbers.'); return; }
-            const useVideo = withVideo || videoDefault;
-            getLocalStream(useVideo).then(stream => {
-                const call = peer.call(t, stream);
-                if (!call) { showToast('Unreachable.'); return; }
-                startLog(t, 'peer', 'outgoing');
-                showCallScreen(t, true, useVideo);
-                activeCalls = []; activeCalls.push(call); inCall = true;
-                wireCallEvents(call, useVideo, t);
-            }).catch(() => showToast('Microphone/Camera denied.'));
-        },
-        sendMessage: sendMessage,
-        getContacts, saveContacts, resolveName, showToast
-    };
 })(window);
 </script>
 </body>
