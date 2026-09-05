@@ -9,7 +9,7 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/suryasticsai/premCall-neo/main/logo/premCall-logo.png",
+      "src": "https://raw.githubusercontent.com/suryasticsai/premCall/main/premCall-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
